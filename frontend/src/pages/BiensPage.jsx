@@ -1,11 +1,20 @@
 import { useState, useEffect } from 'react';
 import { biensAPI } from '../services/api';
-import { Home, MapPin, TrendingUp, Euro } from 'lucide-react';
+import { Home, MapPin, TrendingUp } from 'lucide-react';
+import BienForm from '../components/BienForm';
 
 function BiensPage() {
   const [biens, setBiens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
+  // IDs temporaires (à remplacer par tes vrais IDs)
+  // TODO: Plus tard on récupérera ça de l'authentification
+  const userIds = {
+    userId: '16a9484e-ac92-4130-a03d-58dc36007a60',      // Remplace par ton User ID
+    compteId: 'eb71de42-556c-4539-b2eb-898bdd91b944'     // Remplace par ton Compte ID
+  };
 
   // Charger les biens au montage du composant
   useEffect(() => {
@@ -23,6 +32,16 @@ function BiensPage() {
       setError('Impossible de charger les biens');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateBien = async (bienData) => {
+    try {
+      await biensAPI.create(bienData);
+      await loadBiens(); // Recharger la liste
+      setShowForm(false);
+    } catch (err) {
+      throw err; // Propager l'erreur au formulaire
     }
   };
 
@@ -74,7 +93,10 @@ function BiensPage() {
               <h1 className="text-3xl font-bold text-gray-900">🏠 Mes Biens</h1>
               <p className="text-gray-600 mt-1">{biens.length} bien(s) immobilier(s)</p>
             </div>
-            <button className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold">
+            <button 
+              onClick={() => setShowForm(true)}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
+            >
               + Ajouter un Bien
             </button>
           </div>
@@ -92,7 +114,10 @@ function BiensPage() {
             <p className="text-gray-600 mb-6">
               Commencez par ajouter votre premier bien immobilier !
             </p>
-            <button className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold">
+            <button 
+              onClick={() => setShowForm(true)}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
+            >
               + Ajouter mon premier bien
             </button>
           </div>
@@ -183,6 +208,15 @@ function BiensPage() {
           </div>
         )}
       </div>
+
+      {/* Modal Formulaire */}
+      {showForm && (
+        <BienForm
+          onClose={() => setShowForm(false)}
+          onSubmit={handleCreateBien}
+          userIds={userIds}
+        />
+      )}
     </div>
   );
 }
