@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
-function BienForm({ onClose, onSubmit, userIds }) {
+function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
+  const isEditMode = !!bienToEdit;
+
   const [formData, setFormData] = useState({
     adresse: '',
     ville: '',
@@ -25,6 +27,31 @@ function BienForm({ onClose, onSubmit, userIds }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Pré-remplir le formulaire en mode édition
+  useEffect(() => {
+    if (bienToEdit) {
+      setFormData({
+        adresse: bienToEdit.adresse || '',
+        ville: bienToEdit.ville || '',
+        codePostal: bienToEdit.codePostal || '',
+        pays: bienToEdit.pays || 'France',
+        type: bienToEdit.type || 'APPARTEMENT',
+        surface: bienToEdit.surface || '',
+        nbPieces: bienToEdit.nbPieces || '',
+        nbChambres: bienToEdit.nbChambres || '',
+        etage: bienToEdit.etage || '',
+        prixAchat: bienToEdit.prixAchat || '',
+        fraisNotaire: bienToEdit.fraisNotaire || '',
+        dateAchat: bienToEdit.dateAchat ? bienToEdit.dateAchat.split('T')[0] : '',
+        valeurActuelle: bienToEdit.valeurActuelle || '',
+        loyerHC: bienToEdit.loyerHC || '',
+        charges: bienToEdit.charges || '',
+        statut: bienToEdit.statut || 'LIBRE',
+        description: bienToEdit.description || '',
+      });
+    }
+  }, [bienToEdit]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -39,18 +66,22 @@ function BienForm({ onClose, onSubmit, userIds }) {
     setError(null);
 
     try {
-      // Préparer les données avec les IDs
-      const dataToSend = {
-        ...formData,
-        userId: userIds.userId,
-        compteId: userIds.compteId,
-      };
-
-      await onSubmit(dataToSend);
+      if (isEditMode) {
+        // Mode édition : juste envoyer les données modifiées
+        await onSubmit(bienToEdit.id, formData);
+      } else {
+        // Mode création : ajouter les IDs
+        const dataToSend = {
+          ...formData,
+          userId: userIds.userId,
+          compteId: userIds.compteId,
+        };
+        await onSubmit(dataToSend);
+      }
       onClose();
     } catch (err) {
       console.error('Erreur:', err);
-      setError(err.response?.data?.error || 'Erreur lors de la création du bien');
+      setError(err.response?.data?.error || `Erreur lors de ${isEditMode ? 'la modification' : 'la création'} du bien`);
     } finally {
       setLoading(false);
     }
@@ -61,7 +92,9 @@ function BienForm({ onClose, onSubmit, userIds }) {
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">🏠 Ajouter un Bien</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            {isEditMode ? '✏️ Modifier le Bien' : '🏠 Ajouter un Bien'}
+          </h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition"
@@ -359,7 +392,7 @@ function BienForm({ onClose, onSubmit, userIds }) {
               disabled={loading}
               className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Création...' : 'Créer le bien'}
+              {loading ? (isEditMode ? 'Modification...' : 'Création...') : (isEditMode ? 'Modifier' : 'Créer le bien')}
             </button>
           </div>
         </form>

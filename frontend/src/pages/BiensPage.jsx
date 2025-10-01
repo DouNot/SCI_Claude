@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { biensAPI } from '../services/api';
-import { Home, MapPin, TrendingUp } from 'lucide-react';
+import { Home, MapPin, TrendingUp, Edit, Trash2 } from 'lucide-react';
 import BienForm from '../components/BienForm';
 
 function BiensPage() {
@@ -8,15 +8,15 @@ function BiensPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [bienToEdit, setBienToEdit] = useState(null);
+  const [bienToDelete, setBienToDelete] = useState(null);
 
-  // IDs temporaires (à remplacer par tes vrais IDs)
-  // TODO: Plus tard on récupérera ça de l'authentification
+  // IDs temporaires
   const userIds = {
-    userId: '16a9484e-ac92-4130-a03d-58dc36007a60',      // Remplace par ton User ID
-    compteId: 'eb71de42-556c-4539-b2eb-898bdd91b944'     // Remplace par ton Compte ID
+    userId: '16a9484e-ac92-4130-a03d-58dc36007a60',
+    compteId: 'eb71de42-556c-4539-b2eb-898bdd91b944'
   };
 
-  // Charger les biens au montage du composant
   useEffect(() => {
     loadBiens();
   }, []);
@@ -38,14 +38,45 @@ function BiensPage() {
   const handleCreateBien = async (bienData) => {
     try {
       await biensAPI.create(bienData);
-      await loadBiens(); // Recharger la liste
+      await loadBiens();
       setShowForm(false);
     } catch (err) {
-      throw err; // Propager l'erreur au formulaire
+      throw err;
     }
   };
 
-  // Calculer la rentabilité
+  const handleUpdateBien = async (id, bienData) => {
+    try {
+      await biensAPI.update(id, bienData);
+      await loadBiens();
+      setBienToEdit(null);
+      setShowForm(false);
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const handleDeleteBien = async (id) => {
+    try {
+      await biensAPI.delete(id);
+      await loadBiens();
+      setBienToDelete(null);
+    } catch (err) {
+      console.error('Erreur suppression:', err);
+      alert('Erreur lors de la suppression');
+    }
+  };
+
+  const openEditForm = (bien) => {
+    setBienToEdit(bien);
+    setShowForm(true);
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setBienToEdit(null);
+  };
+
   const calculerRentabilite = (bien) => {
     if (!bien.loyerHC || !bien.prixAchat) return null;
     const loyerAnnuel = bien.loyerHC * 12;
@@ -53,7 +84,6 @@ function BiensPage() {
     return rentabilite.toFixed(2);
   };
 
-  // Loading
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -65,7 +95,6 @@ function BiensPage() {
     );
   }
 
-  // Error
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -126,11 +155,29 @@ function BiensPage() {
             {biens.map((bien) => (
               <div
                 key={bien.id}
-                className="bg-white rounded-xl shadow-lg hover:shadow-xl transition overflow-hidden cursor-pointer"
+                className="bg-white rounded-xl shadow-lg hover:shadow-xl transition overflow-hidden"
               >
                 {/* Image placeholder */}
-                <div className="h-48 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+                <div className="h-48 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center relative">
                   <Home className="h-20 w-20 text-white opacity-50" />
+                  
+                  {/* Boutons Actions (sur l'image) */}
+                  <div className="absolute top-3 right-3 flex gap-2">
+                    <button
+                      onClick={() => openEditForm(bien)}
+                      className="bg-white/90 hover:bg-white p-2 rounded-lg transition shadow"
+                      title="Modifier"
+                    >
+                      <Edit className="h-4 w-4 text-blue-600" />
+                    </button>
+                    <button
+                      onClick={() => setBienToDelete(bien)}
+                      className="bg-white/90 hover:bg-white p-2 rounded-lg transition shadow"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Contenu */}
@@ -209,13 +256,48 @@ function BiensPage() {
         )}
       </div>
 
-      {/* Modal Formulaire */}
+      {/* Modal Formulaire (Ajouter ou Modifier) */}
       {showForm && (
         <BienForm
-          onClose={() => setShowForm(false)}
-          onSubmit={handleCreateBien}
+          onClose={closeForm}
+          onSubmit={bienToEdit ? handleUpdateBien : handleCreateBien}
           userIds={userIds}
+          bienToEdit={bienToEdit}
         />
+      )}
+
+      {/* Modal Confirmation Suppression */}
+      {bienToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              🗑️ Supprimer ce bien ?
+            </h3>
+            <p className="text-gray-600 mb-2">
+              Êtes-vous sûr de vouloir supprimer :
+            </p>
+            <p className="font-semibold text-gray-900 mb-6">
+              {bienToDelete.adresse}, {bienToDelete.ville}
+            </p>
+            <p className="text-sm text-red-600 mb-6">
+              ⚠️ Cette action est irréversible !
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setBienToDelete(null)}
+                className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition font-semibold"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => handleDeleteBien(bienToDelete.id)}
+                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-semibold"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
