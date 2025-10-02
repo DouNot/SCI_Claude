@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Navbar from './components/Navbar';
 import DashboardPage from './pages/DashboardPage';
 import BiensPage from './pages/BiensPage';
+import LocatairesPage from './pages/LocatairesPage';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -12,6 +13,7 @@ function App() {
       
       {currentPage === 'dashboard' && <DashboardPage />}
       {currentPage === 'biens' && <BiensPage />}
+      {currentPage === 'locataires' && <LocatairesPage />}
     </div>
   );
 }

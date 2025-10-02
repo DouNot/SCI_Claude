@@ -47,4 +47,40 @@ export const biensAPI = {
   },
 };
 
+// ============================================
+// LOCATAIRES
+// ============================================
+
+export const locatairesAPI = {
+  // Récupérer tous les locataires
+  getAll: async () => {
+    const response = await api.get('/locataires');
+    return response.data;
+  },
+
+  // Récupérer un locataire par ID
+  getById: async (id) => {
+    const response = await api.get(`/locataires/${id}`);
+    return response.data;
+  },
+
+  // Créer un locataire
+  create: async (locataireData) => {
+    const response = await api.post('/locataires', locataireData);
+    return response.data;
+  },
+
+  // Mettre à jour un locataire
+  update: async (id, locataireData) => {
+    const response = await api.put(`/locataires/${id}`, locataireData);
+    return response.data;
+  },
+
+  // Supprimer un locataire
+  delete: async (id) => {
+    const response = await api.delete(`/locataires/${id}`);
+    return response.data;
+  },
+};
+
 export default api;

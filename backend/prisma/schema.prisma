@@ -160,28 +160,44 @@ model Pret {
 
 // Locataires
 model Locataire {
-  id              String   @id @default(uuid())
-  nom             String
-  prenom          String
-  email           String?
-  telephone       String?
-  dateNaissance   DateTime?
-  profession      String?
+  id                  String    @id @default(uuid())
   
-  depotGarantie   Float?
-  dateEntree      DateTime?
-  dateSortie      DateTime?
+  // Type de locataire
+  typeLocataire       String    @default("ENTREPRISE") // ENTREPRISE ou PARTICULIER
   
-  noteInterne     String?  // Évaluation interne
+  // Informations Entreprise (pour PRO)
+  raisonSociale       String?   // Nom de l'entreprise
+  siret               String?   // 14 chiffres
+  formeJuridique      String?   // SARL, SAS, SA, EURL, etc.
+  capitalSocial       Float?    // En euros
   
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  // Informations Personne (pour particuliers OU contact entreprise)
+  nom                 String
+  prenom              String
+  
+  // Contact
+  email               String
+  telephone           String?
+  
+  // Adresse
+  adresse             String?
+  ville               String?
+  codePostal          String?
+  
+  // Autres
+  dateNaissance       DateTime?
+  profession          String?
+  dateEntree          DateTime?
+  dateSortie          DateTime?
+  
+  // Timestamps
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   // Relations
-  bienId String
-  bien   Bien   @relation(fields: [bienId], references: [id], onDelete: Cascade)
-  
-  baux   Bail[]
+  bienId              String?
+  bien                Bien?     @relation(fields: [bienId], references: [id], onDelete: SetNull)
+  baux                Bail[]
 }
 
 // Baux
