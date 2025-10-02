@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { bauxAPI, biensAPI, locatairesAPI } from '../services/api';
 import { FileText, Building2, User, Edit, Trash2, Calendar, Euro } from 'lucide-react';
 import BailForm from '../components/BailForm';
+import QuittanceForm from '../components/QuittanceForm';
 
 function BauxPage() {
   const [baux, setBaux] = useState([]);
@@ -10,6 +11,7 @@ function BauxPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [showQuittanceForm, setShowQuittanceForm] = useState(false);
   const [bailToEdit, setBailToEdit] = useState(null);
   const [bailToDelete, setBailToDelete] = useState(null);
 
@@ -126,12 +128,20 @@ function BauxPage() {
               <h1 className="text-3xl font-bold text-gray-900">📄 Baux</h1>
               <p className="text-gray-600 mt-1">{baux.length} bail/baux</p>
             </div>
-            <button 
-              onClick={() => setShowForm(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
-            >
-              + Créer un Bail
-            </button>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowQuittanceForm(true)}
+                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-semibold"
+              >
+                🧾 Générer Quittance
+              </button>
+              <button 
+                onClick={() => setShowForm(true)}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
+              >
+                + Créer un Bail
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -322,6 +332,14 @@ function BauxPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal Quittance */}
+      {showQuittanceForm && (
+        <QuittanceForm
+          onClose={() => setShowQuittanceForm(false)}
+          bauxList={baux}
+        />
       )}
     </div>
   );
