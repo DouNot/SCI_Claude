@@ -9,13 +9,14 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
     ville: '',
     codePostal: '',
     pays: 'France',
-    type: 'LOCAL_COMMERCIAL',  // Par défaut : Local Commercial
+    type: 'LOCAL_COMMERCIAL',
     surface: '',
     nbPieces: '',
     nbChambres: '',
     etage: '',
     prixAchat: '',
     fraisNotaire: '',
+    tauxNotaire: '',
     dateAchat: '',
     valeurActuelle: '',
     loyerHC: '',
@@ -27,7 +28,6 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Pré-remplir le formulaire en mode édition
   useEffect(() => {
     if (bienToEdit) {
       setFormData({
@@ -42,6 +42,7 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
         etage: bienToEdit.etage || '',
         prixAchat: bienToEdit.prixAchat || '',
         fraisNotaire: bienToEdit.fraisNotaire || '',
+        tauxNotaire: '',
         dateAchat: bienToEdit.dateAchat ? bienToEdit.dateAchat.split('T')[0] : '',
         valeurActuelle: bienToEdit.valeurActuelle || '',
         loyerHC: bienToEdit.loyerHC || '',
@@ -60,6 +61,44 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
     }));
   };
 
+  const handlePrixAchatChange = (e) => {
+    const prix = parseFloat(e.target.value) || 0;
+    const taux = parseFloat(formData.tauxNotaire) || 0;
+    
+    if (prix && taux) {
+      const frais = (prix * taux) / 100;
+      setFormData(prev => ({
+        ...prev,
+        prixAchat: e.target.value,
+        fraisNotaire: frais.toFixed(2)
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        prixAchat: e.target.value
+      }));
+    }
+  };
+
+  const handleTauxNotaireChange = (e) => {
+    const taux = parseFloat(e.target.value) || 0;
+    const prix = parseFloat(formData.prixAchat) || 0;
+    
+    if (prix && taux) {
+      const frais = (prix * taux) / 100;
+      setFormData(prev => ({
+        ...prev,
+        tauxNotaire: e.target.value,
+        fraisNotaire: frais.toFixed(2)
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        tauxNotaire: e.target.value
+      }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -67,14 +106,16 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
 
     try {
       if (isEditMode) {
-        await onSubmit(bienToEdit.id, formData);
+        const { tauxNotaire, ...dataToUpdate } = formData;
+        await onSubmit(bienToEdit.id, dataToUpdate);
       } else {
-        const dataToSend = {
-          ...formData,
+        const { tauxNotaire, ...dataToSend } = formData;
+        const finalData = {
+          ...dataToSend,
           userId: userIds.userId,
           compteId: userIds.compteId,
         };
-        await onSubmit(dataToSend);
+        await onSubmit(finalData);
       }
       onClose();
     } catch (err) {
@@ -85,26 +126,20 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
     }
   };
 
-  // Déterminer quels champs afficher selon le type
   const showDetailedFields = ['APPARTEMENT', 'MAISON'].includes(formData.type);
-  const showBasicFields = ['LOCAL_COMMERCIAL', 'BUREAUX', 'HANGAR', 'PARKING', 'TERRAIN'].includes(formData.type);
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900">
-            {isEditMode ? '✏️ Modifier le Bien' : '🏠 Ajouter un Bien'}
+            {isEditMode ? 'Modifier le Bien' : 'Ajouter un Bien'}
           </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
             <X className="h-6 w-6" />
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -112,9 +147,8 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
             </div>
           )}
 
-          {/* Localisation */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">📍 Localisation</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Localisation</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -173,15 +207,14 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
             </div>
           </div>
 
-          {/* Type et Caractéristiques */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">🏘️ Caractéristiques</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Caractéristiques</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Type de bien *
                 </label>
-<select
+                <select
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
@@ -213,7 +246,6 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
                 />
               </div>
               
-              {/* Champs détaillés (Appartement/Maison uniquement) */}
               {showDetailedFields && (
                 <>
                   <div>
@@ -260,10 +292,9 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
             </div>
           </div>
 
-          {/* Financier */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">💰 Informations Financières</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Informations Financières</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Prix d'achat (€) *
@@ -272,11 +303,27 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
                   type="number"
                   name="prixAchat"
                   value={formData.prixAchat}
-                  onChange={handleChange}
+                  onChange={handlePrixAchatChange}
                   required
                   step="0.01"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="350000"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Taux frais notaire (%)
+                </label>
+                <input
+                  type="number"
+                  name="tauxNotaire"
+                  value={formData.tauxNotaire || ''}
+                  onChange={handleTauxNotaireChange}
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="7.5"
                 />
               </div>
               <div>
@@ -351,9 +398,8 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
             </div>
           </div>
 
-          {/* Statut et Description */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">ℹ️ Autres Informations</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Autres Informations</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -391,7 +437,6 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
             </div>
           </div>
 
-          {/* Buttons */}
           <div className="flex gap-3 pt-4 border-t">
             <button
               type="button"

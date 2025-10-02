@@ -112,4 +112,59 @@ export const quittancesAPI = {
   },
 };
 
+// ============================================
+// FACTURES
+// ============================================
+
+export const facturesAPI = {
+  // Récupérer toutes les factures
+  getAll: async () => {
+    const response = await api.get('/factures');
+    return response.data;
+  },
+
+  // Récupérer les factures d'un bien
+  getByBien: async (bienId) => {
+    const response = await api.get(`/factures/bien/${bienId}`);
+    return response.data;
+  },
+
+  // Récupérer une facture par ID
+  getById: async (id) => {
+    const response = await api.get(`/factures/${id}`);
+    return response.data;
+  },
+
+  // Créer une facture avec fichier
+  create: async (factureData) => {
+    const formData = new FormData();
+    
+    // Ajouter tous les champs
+    Object.keys(factureData).forEach(key => {
+      if (factureData[key] !== null && factureData[key] !== undefined) {
+        formData.append(key, factureData[key]);
+      }
+    });
+
+    const response = await api.post('/factures', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Mettre à jour une facture
+  update: async (id, factureData) => {
+    const response = await api.put(`/factures/${id}`, factureData);
+    return response.data;
+  },
+
+  // Supprimer une facture
+  delete: async (id) => {
+    const response = await api.delete(`/factures/${id}`);
+    return response.data;
+  },
+};
+
 export default api;

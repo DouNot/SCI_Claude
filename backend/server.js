@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -9,17 +10,22 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Servir les fichiers statiques (uploads)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Routes
 const bienRoutes = require('./src/routes/bienRoutes');
 const locataireRoutes = require('./src/routes/locataireRoutes');
 const bailRoutes = require('./src/routes/bailRoutes');
 const quittanceRoutes = require('./src/routes/quittanceRoutes');
+const factureRoutes = require('./src/routes/factureRoutes');
 
 // Utiliser les routes
 app.use('/api/biens', bienRoutes);
 app.use('/api/locataires', locataireRoutes);
 app.use('/api/baux', bailRoutes);
 app.use('/api/quittances', quittanceRoutes);
+app.use('/api/factures', factureRoutes);
 
 // Middleware de gestion des erreurs
 const errorHandler = require('./src/middlewares/errorHandler');
