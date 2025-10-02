@@ -1,0 +1,45 @@
+import { LayoutDashboard, Home } from 'lucide-react';
+
+function Navbar({ currentPage, onNavigate }) {
+  return (
+    <nav className="bg-white shadow-lg">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          {/* Logo/Titre */}
+          <div className="flex items-center">
+            <h1 className="text-2xl font-bold text-blue-600">🏠 SCI Claude</h1>
+          </div>
+
+          {/* Menu Navigation */}
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => onNavigate('dashboard')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition font-semibold ${
+                currentPage === 'dashboard'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <LayoutDashboard className="h-5 w-5" />
+              Dashboard
+            </button>
+            
+            <button
+              onClick={() => onNavigate('biens')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition font-semibold ${
+                currentPage === 'biens'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Home className="h-5 w-5" />
+              Mes Biens
+            </button>
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+export default Navbar;

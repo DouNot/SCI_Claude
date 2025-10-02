@@ -3,13 +3,12 @@ const asyncHandler = require('../utils/asyncHandler');
 
 // @desc    Récupérer tous les biens
 // @route   GET /api/biens
-// @access  Private (plus tard avec auth)
-exports.getBiens = asyncHandler(async (req, res) => {
+// @access  Public (à sécuriser plus tard)
+exports.getAllBiens = asyncHandler(async (req, res) => {
   const biens = await prisma.bien.findMany({
     include: {
       compte: true,
       photos: true,
-      prets: true,
     },
     orderBy: {
       createdAt: 'desc',
@@ -25,8 +24,8 @@ exports.getBiens = asyncHandler(async (req, res) => {
 
 // @desc    Récupérer un bien par ID
 // @route   GET /api/biens/:id
-// @access  Private
-exports.getBien = asyncHandler(async (req, res) => {
+// @access  Public (à sécuriser plus tard)
+exports.getBienById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const bien = await prisma.bien.findUnique({
@@ -34,16 +33,11 @@ exports.getBien = asyncHandler(async (req, res) => {
     include: {
       compte: true,
       photos: true,
-      documents: true,
-      prets: true,
       locataires: true,
-      baux: {
-        include: {
-          locataire: true,
-        },
-      },
-      factures: true,
+      documents: true,
       travaux: true,
+      factures: true,
+      prets: true,
     },
   });
 
@@ -62,60 +56,44 @@ exports.getBien = asyncHandler(async (req, res) => {
 
 // @desc    Créer un nouveau bien
 // @route   POST /api/biens
-// @access  Private
+// @access  Public (à sécuriser plus tard)
 exports.createBien = asyncHandler(async (req, res) => {
-  const {
-    adresse,
-    ville,
-    codePostal,
-    pays,
-    type,
-    surface,
-    nbPieces,
-    nbChambres,
-    etage,
-    prixAchat,
-    fraisNotaire,
-    dateAchat,
-    valeurActuelle,
-    loyerHC,
-    charges,
-    statut,
-    description,
-    compteId,
-    userId,
-  } = req.body;
+  const data = req.body;
 
   // Validation basique
-  if (!adresse || !ville || !codePostal || !type || !surface || !prixAchat || !dateAchat || !compteId || !userId) {
+  if (!data.adresse || !data.ville || !data.codePostal || !data.type || !data.surface || !data.prixAchat || !data.dateAchat || !data.compteId || !data.userId) {
     return res.status(400).json({
       success: false,
-      error: 'Veuillez fournir tous les champs obligatoires',
+      error: 'Champs requis manquants',
     });
   }
 
+  // Nettoyer les données : convertir chaînes vides en null pour les champs numériques
+  const dataToCreate = { ...data };
+
+  // Champs numériques : convertir "" en null ou en nombre
+  const numericFields = ['surface', 'nbPieces', 'nbChambres', 'etage', 'prixAchat', 'fraisNotaire', 'valeurActuelle', 'loyerHC', 'charges'];
+  
+  numericFields.forEach(field => {
+    if (dataToCreate[field] === '' || dataToCreate[field] === null || dataToCreate[field] === undefined) {
+      dataToCreate[field] = null;
+    } else if (dataToCreate[field]) {
+      dataToCreate[field] = parseFloat(dataToCreate[field]);
+    }
+  });
+
+  // Date : convertir en objet Date
+  if (dataToCreate.dateAchat) {
+    dataToCreate.dateAchat = new Date(dataToCreate.dateAchat);
+  }
+
+  // Champs texte : convertir "" en null pour description
+  if (dataToCreate.description === '') {
+    dataToCreate.description = null;
+  }
+
   const bien = await prisma.bien.create({
-    data: {
-      adresse,
-      ville,
-      codePostal,
-      pays: pays || 'France',
-      type,
-      surface: parseFloat(surface),
-      nbPieces: nbPieces ? parseInt(nbPieces) : null,
-      nbChambres: nbChambres ? parseInt(nbChambres) : null,
-      etage: etage ? parseInt(etage) : null,
-      prixAchat: parseFloat(prixAchat),
-      fraisNotaire: fraisNotaire ? parseFloat(fraisNotaire) : null,
-      dateAchat: new Date(dateAchat),
-      valeurActuelle: valeurActuelle ? parseFloat(valeurActuelle) : null,
-      loyerHC: loyerHC ? parseFloat(loyerHC) : null,
-      charges: charges ? parseFloat(charges) : null,
-      statut: statut || 'LIBRE',
-      description,
-      compteId,
-      userId,
-    },
+    data: dataToCreate,
     include: {
       compte: true,
     },
@@ -129,36 +107,53 @@ exports.createBien = asyncHandler(async (req, res) => {
 
 // @desc    Mettre à jour un bien
 // @route   PUT /api/biens/:id
-// @access  Private
+// @access  Public (à sécuriser plus tard)
 exports.updateBien = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const data = req.body;
 
-  // Vérifier si le bien existe
-  const bienExiste = await prisma.bien.findUnique({
+  // Vérifier que le bien existe
+  const bienExistant = await prisma.bien.findUnique({
     where: { id },
   });
 
-  if (!bienExiste) {
+  if (!bienExistant) {
     return res.status(404).json({
       success: false,
       error: 'Bien non trouvé',
     });
   }
 
-  // Préparer les données à mettre à jour
-  const dataToUpdate = { ...req.body };
+  // Nettoyer les données : convertir chaînes vides en null pour les champs numériques
+  const dataToUpdate = { ...data };
 
-  // Convertir les types si nécessaire
-  if (dataToUpdate.surface) dataToUpdate.surface = parseFloat(dataToUpdate.surface);
-  if (dataToUpdate.nbPieces) dataToUpdate.nbPieces = parseInt(dataToUpdate.nbPieces);
-  if (dataToUpdate.nbChambres) dataToUpdate.nbChambres = parseInt(dataToUpdate.nbChambres);
-  if (dataToUpdate.etage) dataToUpdate.etage = parseInt(dataToUpdate.etage);
-  if (dataToUpdate.prixAchat) dataToUpdate.prixAchat = parseFloat(dataToUpdate.prixAchat);
-  if (dataToUpdate.fraisNotaire) dataToUpdate.fraisNotaire = parseFloat(dataToUpdate.fraisNotaire);
-  if (dataToUpdate.valeurActuelle) dataToUpdate.valeurActuelle = parseFloat(dataToUpdate.valeurActuelle);
-  if (dataToUpdate.loyerHC) dataToUpdate.loyerHC = parseFloat(dataToUpdate.loyerHC);
-  if (dataToUpdate.charges) dataToUpdate.charges = parseFloat(dataToUpdate.charges);
-  if (dataToUpdate.dateAchat) dataToUpdate.dateAchat = new Date(dataToUpdate.dateAchat);
+  // Champs numériques : convertir "" en null
+  const numericFields = ['surface', 'nbPieces', 'nbChambres', 'etage', 'prixAchat', 'fraisNotaire', 'valeurActuelle', 'loyerHC', 'charges'];
+  
+  numericFields.forEach(field => {
+    if (dataToUpdate[field] === '' || dataToUpdate[field] === null || dataToUpdate[field] === undefined) {
+      dataToUpdate[field] = null;
+    } else if (dataToUpdate[field]) {
+      dataToUpdate[field] = parseFloat(dataToUpdate[field]);
+    }
+  });
+
+  // Date : convertir en objet Date si présente
+  if (dataToUpdate.dateAchat && dataToUpdate.dateAchat !== '') {
+    dataToUpdate.dateAchat = new Date(dataToUpdate.dateAchat);
+  }
+
+  // Champs texte : convertir "" en null pour description
+  if (dataToUpdate.description === '') {
+    dataToUpdate.description = null;
+  }
+
+  // Supprimer les champs qui ne doivent pas être mis à jour
+  delete dataToUpdate.userId;
+  delete dataToUpdate.compteId;
+  delete dataToUpdate.id;
+  delete dataToUpdate.createdAt;
+  delete dataToUpdate.updatedAt;
 
   const bien = await prisma.bien.update({
     where: { id },
@@ -177,10 +172,11 @@ exports.updateBien = asyncHandler(async (req, res) => {
 
 // @desc    Supprimer un bien
 // @route   DELETE /api/biens/:id
-// @access  Private
+// @access  Public (à sécuriser plus tard)
 exports.deleteBien = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
+  // Vérifier que le bien existe
   const bien = await prisma.bien.findUnique({
     where: { id },
   });
@@ -192,12 +188,14 @@ exports.deleteBien = asyncHandler(async (req, res) => {
     });
   }
 
+  // Supprimer le bien (cascade supprimera automatiquement les relations)
   await prisma.bien.delete({
     where: { id },
   });
 
   res.status(200).json({
     success: true,
+    data: {},
     message: 'Bien supprimé avec succès',
   });
 });
