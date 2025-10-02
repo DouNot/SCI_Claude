@@ -72,7 +72,7 @@ model Bien {
   codePostal  String
   pays        String   @default("France")
   
-  type        String   // "APPARTEMENT", "MAISON", "LOCAL_COMMERCIAL", "PARKING", "TERRAIN"
+  type        String   // "APPARTEMENT", "MAISON", "LOCAL_COMMERCIAL", "BUREAUX", "HANGAR", "PARKING", "TERRAIN"
   surface     Float    // en m²
   nbPieces    Int?
   nbChambres  Int?

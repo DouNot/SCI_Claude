@@ -9,7 +9,7 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
     ville: '',
     codePostal: '',
     pays: 'France',
-    type: 'APPARTEMENT',
+    type: 'LOCAL_COMMERCIAL',  // Par défaut : Local Commercial
     surface: '',
     nbPieces: '',
     nbChambres: '',
@@ -35,7 +35,7 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
         ville: bienToEdit.ville || '',
         codePostal: bienToEdit.codePostal || '',
         pays: bienToEdit.pays || 'France',
-        type: bienToEdit.type || 'APPARTEMENT',
+        type: bienToEdit.type || 'LOCAL_COMMERCIAL',
         surface: bienToEdit.surface || '',
         nbPieces: bienToEdit.nbPieces || '',
         nbChambres: bienToEdit.nbChambres || '',
@@ -67,10 +67,8 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
 
     try {
       if (isEditMode) {
-        // Mode édition : juste envoyer les données modifiées
         await onSubmit(bienToEdit.id, formData);
       } else {
-        // Mode création : ajouter les IDs
         const dataToSend = {
           ...formData,
           userId: userIds.userId,
@@ -87,6 +85,9 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
     }
   };
 
+  // Déterminer quels champs afficher selon le type
+  const showDetailedFields = ['APPARTEMENT', 'MAISON'].includes(formData.type);
+  const showBasicFields = ['LOCAL_COMMERCIAL', 'BUREAUX', 'HANGAR', 'PARKING', 'TERRAIN'].includes(formData.type);
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -172,24 +173,26 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
             </div>
           </div>
 
-          {/* Caractéristiques */}
+          {/* Type et Caractéristiques */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">🏘️ Caractéristiques</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
+              <div className="md:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Type *
+                  Type de bien *
                 </label>
-                <select
+<select
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
+                  <option value="LOCAL_COMMERCIAL">Local Commercial</option>
+                  <option value="BUREAUX">Bureaux</option>
+                  <option value="HANGAR">Hangar</option>
                   <option value="APPARTEMENT">Appartement</option>
                   <option value="MAISON">Maison</option>
-                  <option value="LOCAL_COMMERCIAL">Local Commercial</option>
                   <option value="PARKING">Parking</option>
                   <option value="TERRAIN">Terrain</option>
                 </select>
@@ -209,45 +212,51 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
                   placeholder="65"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nombre de pièces
-                </label>
-                <input
-                  type="number"
-                  name="nbPieces"
-                  value={formData.nbPieces}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="3"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nombre de chambres
-                </label>
-                <input
-                  type="number"
-                  name="nbChambres"
-                  value={formData.nbChambres}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Étage
-                </label>
-                <input
-                  type="number"
-                  name="etage"
-                  value={formData.etage}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="4"
-                />
-              </div>
+              
+              {/* Champs détaillés (Appartement/Maison uniquement) */}
+              {showDetailedFields && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nombre de pièces
+                    </label>
+                    <input
+                      type="number"
+                      name="nbPieces"
+                      value={formData.nbPieces}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nombre de chambres
+                    </label>
+                    <input
+                      type="number"
+                      name="nbChambres"
+                      value={formData.nbChambres}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Étage
+                    </label>
+                    <input
+                      type="number"
+                      name="etage"
+                      value={formData.etage}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="4"
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -372,7 +381,11 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
                   onChange={handleChange}
                   rows="3"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Bel appartement avec balcon..."
+                  placeholder={
+                    formData.type === 'LOCAL_COMMERCIAL' 
+                      ? "Local commercial en pied d'immeuble, vitrine..." 
+                      : "Bel appartement avec balcon..."
+                  }
                 />
               </div>
             </div>
