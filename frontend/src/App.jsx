@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import DashboardPage from './pages/DashboardPage';
 import BiensPage from './pages/BiensPage';
 import LocatairesPage from './pages/LocatairesPage';
+import BauxPage from './pages/BauxPage';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -14,6 +15,7 @@ function App() {
       {currentPage === 'dashboard' && <DashboardPage />}
       {currentPage === 'biens' && <BiensPage />}
       {currentPage === 'locataires' && <LocatairesPage />}
+      {currentPage === 'baux' && <BauxPage />}
     </div>
   );
 }

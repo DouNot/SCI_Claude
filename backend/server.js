@@ -12,10 +12,12 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 const bienRoutes = require('./src/routes/bienRoutes');
 const locataireRoutes = require('./src/routes/locataireRoutes');
+const bailRoutes = require('./src/routes/bailRoutes');
 
 // Utiliser les routes
 app.use('/api/biens', bienRoutes);
 app.use('/api/locataires', locataireRoutes);
+app.use('/api/baux', bailRoutes);
 
 // Middleware de gestion des erreurs
 const errorHandler = require('./src/middlewares/errorHandler');

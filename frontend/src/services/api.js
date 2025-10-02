@@ -83,4 +83,40 @@ export const locatairesAPI = {
   },
 };
 
+// ============================================
+// BAUX
+// ============================================
+
+export const bauxAPI = {
+  // Récupérer tous les baux
+  getAll: async () => {
+    const response = await api.get('/baux');
+    return response.data;
+  },
+
+  // Récupérer un bail par ID
+  getById: async (id) => {
+    const response = await api.get(`/baux/${id}`);
+    return response.data;
+  },
+
+  // Créer un bail
+  create: async (bailData) => {
+    const response = await api.post('/baux', bailData);
+    return response.data;
+  },
+
+  // Mettre à jour un bail
+  update: async (id, bailData) => {
+    const response = await api.put(`/baux/${id}`, bailData);
+    return response.data;
+  },
+
+  // Supprimer un bail
+  delete: async (id) => {
+    const response = await api.delete(`/baux/${id}`);
+    return response.data;
+  },
+};
+
 export default api;
