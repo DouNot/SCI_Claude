@@ -1,4 +1,4 @@
-import { LayoutDashboard, Home, Users, FileText, Receipt } from 'lucide-react';
+import { LayoutDashboard, Home, Users, FileText, Receipt, Wrench } from 'lucide-react';
 
 function Navbar({ currentPage, onNavigate }) {
   return (
@@ -7,7 +7,7 @@ function Navbar({ currentPage, onNavigate }) {
         <div className="flex justify-between h-16">
           {/* Logo/Titre */}
           <div className="flex items-center">
-            <h1 className="text-2xl font-bold text-blue-600">SCI Claude</h1>
+            <h1 className="text-2xl font-bold text-blue-600">🏠 SCI Claude</h1>
           </div>
 
           {/* Menu Navigation */}
@@ -70,6 +70,18 @@ function Navbar({ currentPage, onNavigate }) {
             >
               <Receipt className="h-5 w-5" />
               Factures
+            </button>
+
+            <button
+              onClick={() => onNavigate('travaux')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition font-semibold ${
+                currentPage === 'travaux'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Wrench className="h-5 w-5" />
+              Travaux
             </button>
           </div>
         </div>

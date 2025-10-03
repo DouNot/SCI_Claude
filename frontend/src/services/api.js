@@ -167,4 +167,46 @@ export const facturesAPI = {
   },
 };
 
+// ============================================
+// TRAVAUX
+// ============================================
+
+export const travauxAPI = {
+  // Récupérer tous les travaux
+  getAll: async () => {
+    const response = await api.get('/travaux');
+    return response.data;
+  },
+
+  // Récupérer les travaux d'un bien
+  getByBien: async (bienId) => {
+    const response = await api.get(`/travaux/bien/${bienId}`);
+    return response.data;
+  },
+
+  // Récupérer un travaux par ID
+  getById: async (id) => {
+    const response = await api.get(`/travaux/${id}`);
+    return response.data;
+  },
+
+  // Créer des travaux
+  create: async (travauxData) => {
+    const response = await api.post('/travaux', travauxData);
+    return response.data;
+  },
+
+  // Mettre à jour des travaux
+  update: async (id, travauxData) => {
+    const response = await api.put(`/travaux/${id}`, travauxData);
+    return response.data;
+  },
+
+  // Supprimer des travaux
+  delete: async (id) => {
+    const response = await api.delete(`/travaux/${id}`);
+    return response.data;
+  },
+};
+
 export default api;

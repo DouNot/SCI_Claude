@@ -19,6 +19,7 @@ const locataireRoutes = require('./src/routes/locataireRoutes');
 const bailRoutes = require('./src/routes/bailRoutes');
 const quittanceRoutes = require('./src/routes/quittanceRoutes');
 const factureRoutes = require('./src/routes/factureRoutes');
+const travauxRoutes = require('./src/routes/travauxRoutes');
 
 // Utiliser les routes
 app.use('/api/biens', bienRoutes);
@@ -26,6 +27,7 @@ app.use('/api/locataires', locataireRoutes);
 app.use('/api/baux', bailRoutes);
 app.use('/api/quittances', quittanceRoutes);
 app.use('/api/factures', factureRoutes);
+app.use('/api/travaux', travauxRoutes);
 
 // Middleware de gestion des erreurs
 const errorHandler = require('./src/middlewares/errorHandler');

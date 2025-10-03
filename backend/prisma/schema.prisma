@@ -284,17 +284,19 @@ model Travaux {
   id              String   @id @default(uuid())
   titre           String
   description     String?
-  type            String   // "PLANIFIE", "EN_COURS", "TERMINE"
-  categorie       String   // "PLOMBERIE", "ELECTRICITE", "PEINTURE", "RENOVATION", "ENTRETIEN", "AUTRE"
+  type            String   // "REPARATION", "AMELIORATION", "ENTRETIEN"
+  categorie       String?  // "RENOVATION", "PLOMBERIE", "ELECTRICITE", "PEINTURE", "MENUISERIE", "CHAUFFAGE", "TOITURE", "AUTRE"
   
-  dateDebut       DateTime?
+  dateDebut       DateTime
   dateFin         DateTime?
   
-  coutEstime      Float?
+  coutEstime      Float
   coutReel        Float?
   
   artisan         String?
   telephone       String?
+  
+  etat            String   @default("PLANIFIE") // "PLANIFIE", "EN_COURS", "TERMINE", "ANNULE"
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
