@@ -59,9 +59,7 @@ CREATE TABLE "Bien" (
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     "compteId" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    CONSTRAINT "Bien_compteId_fkey" FOREIGN KEY ("compteId") REFERENCES "Compte" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "Bien_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "Bien_compteId_fkey" FOREIGN KEY ("compteId") REFERENCES "Compte" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -109,20 +107,26 @@ CREATE TABLE "Pret" (
 -- CreateTable
 CREATE TABLE "Locataire" (
     "id" TEXT NOT NULL PRIMARY KEY,
+    "typeLocataire" TEXT NOT NULL DEFAULT 'ENTREPRISE',
+    "raisonSociale" TEXT,
+    "siret" TEXT,
+    "formeJuridique" TEXT,
+    "capitalSocial" REAL,
     "nom" TEXT NOT NULL,
     "prenom" TEXT NOT NULL,
-    "email" TEXT,
+    "email" TEXT NOT NULL,
     "telephone" TEXT,
+    "adresse" TEXT,
+    "ville" TEXT,
+    "codePostal" TEXT,
     "dateNaissance" DATETIME,
     "profession" TEXT,
-    "depotGarantie" REAL,
     "dateEntree" DATETIME,
     "dateSortie" DATETIME,
-    "noteInterne" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
-    "bienId" TEXT NOT NULL,
-    CONSTRAINT "Locataire_bienId_fkey" FOREIGN KEY ("bienId") REFERENCES "Bien" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    "bienId" TEXT,
+    CONSTRAINT "Locataire_bienId_fkey" FOREIGN KEY ("bienId") REFERENCES "Bien" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -141,8 +145,8 @@ CREATE TABLE "Bail" (
     "updatedAt" DATETIME NOT NULL,
     "bienId" TEXT NOT NULL,
     "locataireId" TEXT NOT NULL,
-    CONSTRAINT "Bail_bienId_fkey" FOREIGN KEY ("bienId") REFERENCES "Bien" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "Bail_locataireId_fkey" FOREIGN KEY ("locataireId") REFERENCES "Locataire" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "Bail_locataireId_fkey" FOREIGN KEY ("locataireId") REFERENCES "Locataire" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Bail_bienId_fkey" FOREIGN KEY ("bienId") REFERENCES "Bien" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -190,13 +194,14 @@ CREATE TABLE "Travaux" (
     "titre" TEXT NOT NULL,
     "description" TEXT,
     "type" TEXT NOT NULL,
-    "categorie" TEXT NOT NULL,
-    "dateDebut" DATETIME,
+    "categorie" TEXT,
+    "dateDebut" DATETIME NOT NULL,
     "dateFin" DATETIME,
-    "coutEstime" REAL,
+    "coutEstime" REAL NOT NULL,
     "coutReel" REAL,
     "artisan" TEXT,
     "telephone" TEXT,
+    "etat" TEXT NOT NULL DEFAULT 'PLANIFIE',
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     "bienId" TEXT NOT NULL,
@@ -217,7 +222,9 @@ CREATE TABLE "Contact" (
     "notes" TEXT,
     "evaluation" INTEGER,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "updatedAt" DATETIME NOT NULL,
+    "compteId" TEXT NOT NULL,
+    CONSTRAINT "Contact_compteId_fkey" FOREIGN KEY ("compteId") REFERENCES "Compte" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateIndex

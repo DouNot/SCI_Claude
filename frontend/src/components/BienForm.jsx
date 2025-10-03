@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
-function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
+function BienForm({ onClose, onSubmit, bienToEdit = null }) {
   const isEditMode = !!bienToEdit;
 
   const [formData, setFormData] = useState({
@@ -105,17 +105,14 @@ function BienForm({ onClose, onSubmit, userIds, bienToEdit = null }) {
     setError(null);
 
     try {
+      // Retirer tauxNotaire qui n'est qu'un champ de calcul
+      const { tauxNotaire, ...dataToSend } = formData;
+      
       if (isEditMode) {
-        const { tauxNotaire, ...dataToUpdate } = formData;
-        await onSubmit(bienToEdit.id, dataToUpdate);
+        await onSubmit(bienToEdit.id, dataToSend);
       } else {
-        const { tauxNotaire, ...dataToSend } = formData;
-        const finalData = {
-          ...dataToSend,
-          userId: userIds.userId,
-          compteId: userIds.compteId,
-        };
-        await onSubmit(finalData);
+        // Le backend ajoute automatiquement compteId
+        await onSubmit(dataToSend);
       }
       onClose();
     } catch (err) {

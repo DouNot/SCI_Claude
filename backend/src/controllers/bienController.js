@@ -61,7 +61,7 @@ exports.createBien = asyncHandler(async (req, res) => {
   const data = req.body;
 
   // Validation basique
-  if (!data.adresse || !data.ville || !data.codePostal || !data.type || !data.surface || !data.prixAchat || !data.dateAchat || !data.compteId || !data.userId) {
+  if (!data.adresse || !data.ville || !data.codePostal || !data.type || !data.surface || !data.prixAchat || !data.dateAchat) {
     return res.status(400).json({
       success: false,
       error: 'Champs requis manquants',
@@ -91,6 +91,9 @@ exports.createBien = asyncHandler(async (req, res) => {
   if (dataToCreate.description === '') {
     dataToCreate.description = null;
   }
+
+  // Ajouter le compteId par défaut (prépare V2)
+  dataToCreate.compteId = process.env.DEFAULT_COMPTE_ID;
 
   const bien = await prisma.bien.create({
     data: dataToCreate,
@@ -149,7 +152,6 @@ exports.updateBien = asyncHandler(async (req, res) => {
   }
 
   // Supprimer les champs qui ne doivent pas être mis à jour
-  delete dataToUpdate.userId;
   delete dataToUpdate.compteId;
   delete dataToUpdate.id;
   delete dataToUpdate.createdAt;

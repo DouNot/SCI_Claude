@@ -94,6 +94,9 @@ exports.createContact = asyncHandler(async (req, res) => {
     dataToCreate.evaluation = parseInt(dataToCreate.evaluation);
   }
 
+  // Ajouter le compteId par défaut (prépare V2)
+  dataToCreate.compteId = process.env.DEFAULT_COMPTE_ID;
+
   const contact = await prisma.contact.create({
     data: dataToCreate,
   });
@@ -140,6 +143,7 @@ exports.updateContact = asyncHandler(async (req, res) => {
   }
 
   // Supprimer champs non modifiables
+  delete dataToUpdate.compteId;
   delete dataToUpdate.id;
   delete dataToUpdate.createdAt;
   delete dataToUpdate.updatedAt;

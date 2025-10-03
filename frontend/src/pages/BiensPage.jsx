@@ -11,12 +11,6 @@ function BiensPage() {
   const [bienToEdit, setBienToEdit] = useState(null);
   const [bienToDelete, setBienToDelete] = useState(null);
 
-  // IDs temporaires
-  const userIds = {
-    userId: '16a9484e-ac92-4130-a03d-58dc36007a60',
-    compteId: 'eb71de42-556c-4539-b2eb-898bdd91b944'
-  };
-
   useEffect(() => {
     loadBiens();
   }, []);
@@ -99,7 +93,7 @@ function BiensPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
-          <p className="text-red-800 font-semibold mb-2">❌ Erreur</p>
+          <p className="text-red-800 font-semibold mb-2">Erreur</p>
           <p className="text-red-600">{error}</p>
           <button 
             onClick={loadBiens}
@@ -261,7 +255,6 @@ function BiensPage() {
         <BienForm
           onClose={closeForm}
           onSubmit={bienToEdit ? handleUpdateBien : handleCreateBien}
-          userIds={userIds}
           bienToEdit={bienToEdit}
         />
       )}
@@ -271,7 +264,7 @@ function BiensPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 className="text-xl font-bold text-gray-900 mb-4">
-              🗑️ Supprimer ce bien ?
+              Supprimer ce bien ?
             </h3>
             <p className="text-gray-600 mb-2">
               Êtes-vous sûr de vouloir supprimer :
@@ -280,7 +273,7 @@ function BiensPage() {
               {bienToDelete.adresse}, {bienToDelete.ville}
             </p>
             <p className="text-sm text-red-600 mb-6">
-              ⚠️ Cette action est irréversible !
+              Cette action est irréversible !
             </p>
             <div className="flex gap-3">
               <button

@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,246 +7,177 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ==========================================
-// MODÈLES DE DONNÉES
-// ==========================================
-
-// Utilisateurs (toi, associés SCI, etc.)
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
   password  String
   nom       String
   prenom    String
-  role      String   @default("USER") // USER, ADMIN
+  role      String   @default("USER")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  // Relations
   comptes   Compte[]
-  biens     Bien[]
 }
 
-// Comptes (Personnel, SCI, etc.)
 model Compte {
-  id          String   @id @default(uuid())
-  nom         String   // "Personnel", "SCI Famille", etc.
-  type        String   // "PERSO", "SCI"
+  id          String    @id @default(uuid())
+  nom         String
+  type        String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  biens  Bien[]
-
-  // Associés SCI (si type = "SCI")
-  associes Associe[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+  associes    Associe[]
+  biens       Bien[]
+  contacts    Contact[]
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Associés d'une SCI
 model Associe {
-  id             String   @id @default(uuid())
-  nom            String
-  prenom         String
-  email          String?
-  telephone      String?
-  pourcentageParts Float  // Pourcentage de parts (ex: 33.33)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  // Relations
-  compteId String
-  compte   Compte @relation(fields: [compteId], references: [id], onDelete: Cascade)
+  id               String   @id @default(uuid())
+  nom              String
+  prenom           String
+  email            String?
+  telephone        String?
+  pourcentageParts Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  compteId         String
+  compte           Compte   @relation(fields: [compteId], references: [id], onDelete: Cascade)
 }
 
-// Biens immobiliers
 model Bien {
-  id          String   @id @default(uuid())
-  adresse     String
-  ville       String
-  codePostal  String
-  pays        String   @default("France")
-  
-  type        String   // "APPARTEMENT", "MAISON", "LOCAL_COMMERCIAL", "BUREAUX", "HANGAR", "PARKING", "TERRAIN"
-  surface     Float    // en m²
-  nbPieces    Int?
-  nbChambres  Int?
-  etage       Int?
-  
-  prixAchat   Float
-  fraisNotaire Float?
-  dateAchat   DateTime
-  valeurActuelle Float? // Estimation actuelle
-  
-  loyerHC     Float?   // Loyer hors charges
-  charges     Float?   // Charges mensuelles
-  
-  statut      String   @default("LIBRE") // "LIBRE", "LOUE", "TRAVAUX", "VENTE"
-  
-  description String?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  compteId String
-  compte   Compte @relation(fields: [compteId], references: [id], onDelete: Cascade)
-  
-  userId   String
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  photos      Photo[]
-  documents   Document[]
-  prets       Pret[]
-  locataires  Locataire[]
-  baux        Bail[]
-  factures    Facture[]
-  travaux     Travaux[]
+  id             String      @id @default(uuid())
+  adresse        String
+  ville          String
+  codePostal     String
+  pays           String      @default("France")
+  type           String
+  surface        Float
+  nbPieces       Int?
+  nbChambres     Int?
+  etage          Int?
+  prixAchat      Float
+  fraisNotaire   Float?
+  dateAchat      DateTime
+  valeurActuelle Float?
+  loyerHC        Float?
+  charges        Float?
+  statut         String      @default("LIBRE")
+  description    String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  compteId       String
+  baux           Bail[]
+  compte         Compte      @relation(fields: [compteId], references: [id], onDelete: Cascade)
+  documents      Document[]
+  factures       Facture[]
+  locataires     Locataire[]
+  photos         Photo[]
+  prets          Pret[]
+  travaux        Travaux[]
 }
 
-// Photos des biens
 model Photo {
   id        String   @id @default(uuid())
   url       String
   filename  String
-  isPrimary Boolean  @default(false) // Photo principale
+  isPrimary Boolean  @default(false)
   createdAt DateTime @default(now())
-
-  // Relations
-  bienId String
-  bien   Bien   @relation(fields: [bienId], references: [id], onDelete: Cascade)
+  bienId    String
+  bien      Bien     @relation(fields: [bienId], references: [id], onDelete: Cascade)
 }
 
-// Documents (actes, diagnostics, etc.)
 model Document {
-  id          String   @id @default(uuid())
-  nom         String
-  type        String   // "ACTE_VENTE", "DPE", "BAIL", "QUITTANCE", "FACTURE", "DIAGNOSTIC", "AUTRE"
-  url         String
-  filename    String
-  dateDocument DateTime?
-  dateExpiration DateTime? // Pour diagnostics
-  createdAt   DateTime @default(now())
-
-  // Relations
-  bienId String
-  bien   Bien   @relation(fields: [bienId], references: [id], onDelete: Cascade)
+  id             String    @id @default(uuid())
+  nom            String
+  type           String
+  url            String
+  filename       String
+  dateDocument   DateTime?
+  dateExpiration DateTime?
+  createdAt      DateTime  @default(now())
+  bienId         String
+  bien           Bien      @relation(fields: [bienId], references: [id], onDelete: Cascade)
 }
 
-// Prêts immobiliers
 model Pret {
-  id              String   @id @default(uuid())
-  montant         Float    // Montant emprunté
-  taux            Float    // Taux d'intérêt annuel
-  duree           Int      // Durée en mois
-  mensualite      Float    // Mensualité totale (capital + intérêts + assurance)
-  tauxAssurance   Float?   // Taux assurance emprunteur
-  dateDebut       DateTime
-  organisme       String   // Banque
-  numeroContrat   String?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  bienId String
-  bien   Bien   @relation(fields: [bienId], references: [id], onDelete: Cascade)
+  id            String   @id @default(uuid())
+  montant       Float
+  taux          Float
+  duree         Int
+  mensualite    Float
+  tauxAssurance Float?
+  dateDebut     DateTime
+  organisme     String
+  numeroContrat String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  bienId        String
+  bien          Bien     @relation(fields: [bienId], references: [id], onDelete: Cascade)
 }
 
-// Locataires
 model Locataire {
-  id                  String    @id @default(uuid())
-  
-  // Type de locataire
-  typeLocataire       String    @default("ENTREPRISE") // ENTREPRISE ou PARTICULIER
-  
-  // Informations Entreprise (pour PRO)
-  raisonSociale       String?   // Nom de l'entreprise
-  siret               String?   // 14 chiffres
-  formeJuridique      String?   // SARL, SAS, SA, EURL, etc.
-  capitalSocial       Float?    // En euros
-  
-  // Informations Personne (pour particuliers OU contact entreprise)
-  nom                 String
-  prenom              String
-  
-  // Contact
-  email               String
-  telephone           String?
-  
-  // Adresse
-  adresse             String?
-  ville               String?
-  codePostal          String?
-  
-  // Autres
-  dateNaissance       DateTime?
-  profession          String?
-  dateEntree          DateTime?
-  dateSortie          DateTime?
-  
-  // Timestamps
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-
-  // Relations
-  bienId              String?
-  bien                Bien?     @relation(fields: [bienId], references: [id], onDelete: SetNull)
-  baux                Bail[]
+  id             String    @id @default(uuid())
+  typeLocataire  String    @default("ENTREPRISE")
+  raisonSociale  String?
+  siret          String?
+  formeJuridique String?
+  capitalSocial  Float?
+  nom            String
+  prenom         String
+  email          String
+  telephone      String?
+  adresse        String?
+  ville          String?
+  codePostal     String?
+  dateNaissance  DateTime?
+  profession     String?
+  dateEntree     DateTime?
+  dateSortie     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  bienId         String?
+  baux           Bail[]
+  bien           Bien?     @relation(fields: [bienId], references: [id])
 }
 
-// Baux
 model Bail {
-  id              String   @id @default(uuid())
-  typeBail        String   // "VIDE", "MEUBLE", "COMMERCIAL", "MIXTE"
-  dateDebut       DateTime
-  dateFin         DateTime?
-  duree           Int      // Durée en mois
-  
-  loyerHC         Float    // Loyer hors charges
-  charges         Float?   // Charges mensuelles
-  
-  depotGarantie   Float?
-  indexRevision   String?  // "IRL", "ICC", "ILAT"
-  
-  statut          String   @default("ACTIF") // "ACTIF", "TERMINE", "RESILIE"
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  bienId      String
-  bien        Bien      @relation(fields: [bienId], references: [id], onDelete: Cascade)
-  
-  locataireId String
-  locataire   Locataire @relation(fields: [locataireId], references: [id], onDelete: Cascade)
-  
-  quittances  Quittance[]
+  id            String      @id @default(uuid())
+  typeBail      String
+  dateDebut     DateTime
+  dateFin       DateTime?
+  duree         Int
+  loyerHC       Float
+  charges       Float?
+  depotGarantie Float?
+  indexRevision String?
+  statut        String      @default("ACTIF")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  bienId        String
+  locataireId   String
+  locataire     Locataire   @relation(fields: [locataireId], references: [id], onDelete: Cascade)
+  bien          Bien        @relation(fields: [bienId], references: [id], onDelete: Cascade)
+  quittances    Quittance[]
 }
 
-// Quittances de loyer
 model Quittance {
-  id          String   @id @default(uuid())
-  mois        Int      // 1-12
-  annee       Int
-  montantLoyer Float
+  id             String    @id @default(uuid())
+  mois           Int
+  annee          Int
+  montantLoyer   Float
   montantCharges Float?
-  montantTotal Float
-  datePaiement DateTime?
-  estPaye     Boolean  @default(false)
-  
-  createdAt   DateTime @default(now())
-
-  // Relations
-  bailId String
-  bail   Bail   @relation(fields: [bailId], references: [id], onDelete: Cascade)
+  montantTotal   Float
+  datePaiement   DateTime?
+  estPaye        Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  bailId         String
+  bail           Bail      @relation(fields: [bailId], references: [id], onDelete: Cascade)
 }
 
-// Factures (travaux, charges, etc.)
 model Facture {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   numero          String?
   fournisseur     String
   montantTTC      Float
@@ -257,71 +185,53 @@ model Facture {
   tva             Float?
   dateFacture     DateTime
   datePaiement    DateTime?
-  
-  categorie       String   // "TRAVAUX", "ENTRETIEN", "FOURNITURE", "TAXE_FONCIERE", "ASSURANCE", "COPROPRIETE", "AUTRE"
-  sousCategorie   String?  // "PLOMBERIE", "ELECTRICITE", "PEINTURE", etc.
-  
+  categorie       String
+  sousCategorie   String?
   description     String?
-  url             String?  // URL du PDF
+  url             String?
   filename        String?
-  
-  estPaye         Boolean  @default(false)
-  estDeductible   Boolean  @default(true)
-  
-  // Données extraites par IA
+  estPaye         Boolean   @default(false)
+  estDeductible   Boolean   @default(true)
   adresseDetectee String?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  bienId String
-  bien   Bien   @relation(fields: [bienId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  bienId          String
+  bien            Bien      @relation(fields: [bienId], references: [id], onDelete: Cascade)
 }
 
-// Travaux
 model Travaux {
-  id              String   @id @default(uuid())
-  titre           String
-  description     String?
-  type            String   // "REPARATION", "AMELIORATION", "ENTRETIEN"
-  categorie       String?  // "RENOVATION", "PLOMBERIE", "ELECTRICITE", "PEINTURE", "MENUISERIE", "CHAUFFAGE", "TOITURE", "AUTRE"
-  
-  dateDebut       DateTime
-  dateFin         DateTime?
-  
-  coutEstime      Float
-  coutReel        Float?
-  
-  artisan         String?
-  telephone       String?
-  
-  etat            String   @default("PLANIFIE") // "PLANIFIE", "EN_COURS", "TERMINE", "ANNULE"
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  bienId String
-  bien   Bien   @relation(fields: [bienId], references: [id], onDelete: Cascade)
+  id          String    @id @default(uuid())
+  titre       String
+  description String?
+  type        String
+  categorie   String?
+  dateDebut   DateTime
+  dateFin     DateTime?
+  coutEstime  Float
+  coutReel    Float?
+  artisan     String?
+  telephone   String?
+  etat        String    @default("PLANIFIE")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  bienId      String
+  bien        Bien      @relation(fields: [bienId], references: [id], onDelete: Cascade)
 }
 
-// Contacts professionnels
 model Contact {
-  id          String   @id @default(uuid())
-  nom         String
-  prenom      String?
-  entreprise  String?
-  type        String   // "NOTAIRE", "COMPTABLE", "AVOCAT", "AGENT_IMMO", "ARTISAN", "SYNDIC", "ASSUREUR", "AUTRE"
-  
-  email       String?
-  telephone   String?
-  adresse     String?
-  siteWeb     String?
-  
-  notes       String?
-  evaluation  Int?     // Note sur 5
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(uuid())
+  nom        String
+  prenom     String?
+  entreprise String?
+  type       String
+  email      String?
+  telephone  String?
+  adresse    String?
+  siteWeb    String?
+  notes      String?
+  evaluation Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  compteId   String
+  compte     Compte   @relation(fields: [compteId], references: [id], onDelete: Cascade)
 }
