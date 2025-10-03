@@ -335,4 +335,59 @@ export const associesAPI = {
   },
 };
 
+// ============================================
+// DOCUMENTS
+// ============================================
+
+export const documentsAPI = {
+  // Récupérer tous les documents
+  getAll: async () => {
+    const response = await api.get('/documents');
+    return response.data;
+  },
+
+  // Récupérer les documents d'un bien
+  getByBien: async (bienId) => {
+    const response = await api.get(`/documents/bien/${bienId}`);
+    return response.data;
+  },
+
+  // Récupérer un document par ID
+  getById: async (id) => {
+    const response = await api.get(`/documents/${id}`);
+    return response.data;
+  },
+
+  // Créer un document avec fichier
+  create: async (documentData) => {
+    const formData = new FormData();
+    
+    // Ajouter tous les champs
+    Object.keys(documentData).forEach(key => {
+      if (documentData[key] !== null && documentData[key] !== undefined) {
+        formData.append(key, documentData[key]);
+      }
+    });
+
+    const response = await api.post('/documents', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Mettre à jour un document
+  update: async (id, documentData) => {
+    const response = await api.put(`/documents/${id}`, documentData);
+    return response.data;
+  },
+
+  // Supprimer un document
+  delete: async (id) => {
+    const response = await api.delete(`/documents/${id}`);
+    return response.data;
+  },
+};
+
 export default api;

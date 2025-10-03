@@ -1,4 +1,4 @@
-import { LayoutDashboard, Home, Users, FileText, Receipt, Wrench, UserCircle, DollarSign, UsersRound } from 'lucide-react';
+import { LayoutDashboard, Home, Users, FileText, Receipt, Wrench, UserCircle, DollarSign, UsersRound, FolderOpen } from 'lucide-react';
 
 function Navbar({ currentPage, onNavigate }) {
   return (
@@ -118,6 +118,18 @@ function Navbar({ currentPage, onNavigate }) {
             >
               <UsersRound className="h-5 w-5" />
               Associés
+            </button>
+
+            <button
+              onClick={() => onNavigate('documents')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition font-semibold ${
+                currentPage === 'documents'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <FolderOpen className="h-5 w-5" />
+              Documents
             </button>
           </div>
         </div>
