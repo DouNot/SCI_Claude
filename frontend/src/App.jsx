@@ -6,6 +6,7 @@ import LocatairesPage from './pages/LocatairesPage';
 import BauxPage from './pages/BauxPage';
 import FacturesPage from './pages/FacturesPage';
 import TravauxPage from './pages/TravauxPage';
+import ContactsPage from './pages/ContactsPage';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -20,6 +21,7 @@ function App() {
       {currentPage === 'baux' && <BauxPage />}
       {currentPage === 'factures' && <FacturesPage />}
       {currentPage === 'travaux' && <TravauxPage />}
+      {currentPage === 'contacts' && <ContactsPage />}
     </div>
   );
 }

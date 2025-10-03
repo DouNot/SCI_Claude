@@ -209,4 +209,46 @@ export const travauxAPI = {
   },
 };
 
+// ============================================
+// CONTACTS
+// ============================================
+
+export const contactsAPI = {
+  // Récupérer tous les contacts
+  getAll: async () => {
+    const response = await api.get('/contacts');
+    return response.data;
+  },
+
+  // Récupérer les contacts par type
+  getByType: async (type) => {
+    const response = await api.get(`/contacts/type/${type}`);
+    return response.data;
+  },
+
+  // Récupérer un contact par ID
+  getById: async (id) => {
+    const response = await api.get(`/contacts/${id}`);
+    return response.data;
+  },
+
+  // Créer un contact
+  create: async (contactData) => {
+    const response = await api.post('/contacts', contactData);
+    return response.data;
+  },
+
+  // Mettre à jour un contact
+  update: async (id, contactData) => {
+    const response = await api.put(`/contacts/${id}`, contactData);
+    return response.data;
+  },
+
+  // Supprimer un contact
+  delete: async (id) => {
+    const response = await api.delete(`/contacts/${id}`);
+    return response.data;
+  },
+};
+
 export default api;
