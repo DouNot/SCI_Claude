@@ -251,4 +251,46 @@ export const contactsAPI = {
   },
 };
 
+// ============================================
+// PRÊTS
+// ============================================
+
+export const pretsAPI = {
+  // Récupérer tous les prêts
+  getAll: async () => {
+    const response = await api.get('/prets');
+    return response.data;
+  },
+
+  // Récupérer les prêts d'un bien
+  getByBien: async (bienId) => {
+    const response = await api.get(`/prets/bien/${bienId}`);
+    return response.data;
+  },
+
+  // Récupérer un prêt par ID (avec tableau d'amortissement)
+  getById: async (id) => {
+    const response = await api.get(`/prets/${id}`);
+    return response.data;
+  },
+
+  // Créer un prêt
+  create: async (pretData) => {
+    const response = await api.post('/prets', pretData);
+    return response.data;
+  },
+
+  // Mettre à jour un prêt
+  update: async (id, pretData) => {
+    const response = await api.put(`/prets/${id}`, pretData);
+    return response.data;
+  },
+
+  // Supprimer un prêt
+  delete: async (id) => {
+    const response = await api.delete(`/prets/${id}`);
+    return response.data;
+  },
+};
+
 export default api;
