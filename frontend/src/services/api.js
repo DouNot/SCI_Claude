@@ -293,4 +293,46 @@ export const pretsAPI = {
   },
 };
 
+// ============================================
+// ASSOCIÉS
+// ============================================
+
+export const associesAPI = {
+  // Récupérer tous les associés
+  getAll: async () => {
+    const response = await api.get('/associes');
+    return response.data;
+  },
+
+  // Récupérer les associés d'un compte
+  getByCompte: async (compteId) => {
+    const response = await api.get(`/associes/compte/${compteId}`);
+    return response.data;
+  },
+
+  // Récupérer un associé par ID
+  getById: async (id) => {
+    const response = await api.get(`/associes/${id}`);
+    return response.data;
+  },
+
+  // Créer un associé
+  create: async (associeData) => {
+    const response = await api.post('/associes', associeData);
+    return response.data;
+  },
+
+  // Mettre à jour un associé
+  update: async (id, associeData) => {
+    const response = await api.put(`/associes/${id}`, associeData);
+    return response.data;
+  },
+
+  // Supprimer un associé
+  delete: async (id) => {
+    const response = await api.delete(`/associes/${id}`);
+    return response.data;
+  },
+};
+
 export default api;

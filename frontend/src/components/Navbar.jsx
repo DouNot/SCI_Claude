@@ -1,4 +1,4 @@
-import { LayoutDashboard, Home, Users, FileText, Receipt, Wrench, UserCircle, DollarSign } from 'lucide-react';
+import { LayoutDashboard, Home, Users, FileText, Receipt, Wrench, UserCircle, DollarSign, UsersRound } from 'lucide-react';
 
 function Navbar({ currentPage, onNavigate }) {
   return (
@@ -106,6 +106,18 @@ function Navbar({ currentPage, onNavigate }) {
             >
               <DollarSign className="h-5 w-5" />
               Prêts
+            </button>
+
+            <button
+              onClick={() => onNavigate('associes')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition font-semibold ${
+                currentPage === 'associes'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <UsersRound className="h-5 w-5" />
+              Associés
             </button>
           </div>
         </div>

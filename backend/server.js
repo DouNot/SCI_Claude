@@ -22,6 +22,7 @@ const factureRoutes = require('./src/routes/factureRoutes');
 const travauxRoutes = require('./src/routes/travauxRoutes');
 const contactRoutes = require('./src/routes/contactRoutes');
 const pretRoutes = require('./src/routes/pretRoutes');
+const associeRoutes = require('./src/routes/associeRoutes');
 
 // Utiliser les routes
 app.use('/api/biens', bienRoutes);
@@ -32,6 +33,7 @@ app.use('/api/factures', factureRoutes);
 app.use('/api/travaux', travauxRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/prets', pretRoutes);
+app.use('/api/associes', associeRoutes);
 
 // Middleware de gestion des erreurs
 const errorHandler = require('./src/middlewares/errorHandler');
