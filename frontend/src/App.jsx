@@ -10,6 +10,7 @@ import ContactsPage from './pages/ContactsPage';
 import PretsPage from './pages/PretsPage';
 import AssociesPage from './pages/AssociesPage';
 import DocumentsPage from './pages/DocumentsPage';
+import EvenementsFiscauxPage from './pages/EvenementsFiscauxPage';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -28,6 +29,7 @@ function App() {
       {currentPage === 'prets' && <PretsPage />}
       {currentPage === 'associes' && <AssociesPage />}
       {currentPage === 'documents' && <DocumentsPage />}
+      {currentPage === 'evenements' && <EvenementsFiscauxPage />}
     </div>
   );
 }

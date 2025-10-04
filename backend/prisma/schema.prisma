@@ -76,6 +76,7 @@ model Bien {
   photos         Photo[]
   prets          Pret[]
   travaux        Travaux[]
+  evenementsFiscaux EvenementFiscal[]
 }
 
 model Photo {
@@ -234,4 +235,18 @@ model Contact {
   updatedAt  DateTime @updatedAt
   compteId   String
   compte     Compte   @relation(fields: [compteId], references: [id], onDelete: Cascade)
+}
+
+model EvenementFiscal {
+  id            String    @id @default(uuid())
+  type          String
+  dateEcheance  DateTime
+  montant       Float?
+  datePaiement  DateTime?
+  estPaye       Boolean   @default(false)
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  bienId        String
+  bien          Bien      @relation(fields: [bienId], references: [id], onDelete: Cascade)
 }
