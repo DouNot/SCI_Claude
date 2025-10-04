@@ -84,6 +84,7 @@ model Photo {
   url       String
   filename  String
   isPrimary Boolean  @default(false)
+  ordre     Int      @default(0)  // Ajout pour l'ordre d'affichage
   createdAt DateTime @default(now())
   bienId    String
   bien      Bien     @relation(fields: [bienId], references: [id], onDelete: Cascade)

@@ -300,4 +300,30 @@ export const evenementsFiscauxAPI = {
   },
 };
 
+export const photosAPI = {
+  getByBien: async (bienId) => {
+    const response = await api.get(`/photos/bien/${bienId}`);
+    return response.data;
+  },
+  upload: async (bienId, files) => {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('photos', file);
+    });
+    const response = await api.post(`/photos/upload/${bienId}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+  setPrimary: async (photoId) => {
+    const response = await api.put(`/photos/${photoId}/primary`);
+    return response.data;
+  },
+  delete: async (photoId) => {
+    const response = await api.delete(`/photos/${photoId}`);
+    return response.data;
+  },
+};
+
+
 export default api;
