@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
-import { locatairesAPI, biensAPI } from '../services/api';
-import { Users, Building2, User, Edit, Trash2, Mail, Phone, MapPin } from 'lucide-react';
+import { locatairesAPI, bauxAPI, biensAPI } from '../services/api';
+import { Plus, Search, Users, Building2, User } from 'lucide-react';
 import LocataireForm from '../components/LocataireForm';
+import PageLayout from '../components/PageLayout';
 
 function LocatairesPage() {
   const [locataires, setLocataires] = useState([]);
+  const [baux, setBaux] = useState([]);
   const [biens, setBiens] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [showForm, setShowForm] = useState(false);
   const [locataireToEdit, setLocataireToEdit] = useState(null);
-  const [locataireToDelete, setLocataireToDelete] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -19,16 +21,16 @@ function LocatairesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [locatairesData, biensData] = await Promise.all([
+      const [locatairesRes, bauxRes, biensRes] = await Promise.all([
         locatairesAPI.getAll(),
+        bauxAPI.getAll(),
         biensAPI.getAll()
       ]);
-      setLocataires(locatairesData.data);
-      setBiens(biensData.data);
-      setError(null);
+      setLocataires(locatairesRes.data);
+      setBaux(bauxRes.data);
+      setBiens(biensRes.data);
     } catch (err) {
-      console.error('Erreur:', err);
-      setError('Impossible de charger les locataires');
+      console.error('Erreur chargement locataires:', err);
     } finally {
       setLoading(false);
     }
@@ -55,217 +57,182 @@ function LocatairesPage() {
     }
   };
 
-  const handleDeleteLocataire = async (id) => {
-    try {
-      await locatairesAPI.delete(id);
-      await loadData();
-      setLocataireToDelete(null);
-    } catch (err) {
-      console.error('Erreur suppression:', err);
-      alert('Erreur lors de la suppression');
-    }
-  };
-
-  const openEditForm = (locataire) => {
-    setLocataireToEdit(locataire);
-    setShowForm(true);
-  };
-
   const closeForm = () => {
     setShowForm(false);
     setLocataireToEdit(null);
   };
 
+  const getLocataireBaux = (locataireId) => {
+    return baux.filter(b => b.locataireId === locataireId);
+  };
+
+  const isLocataireActif = (locataireId) => {
+    return baux.some(b => b.locataireId === locataireId && b.statut === 'ACTIF');
+  };
+
+  const filteredLocataires = locataires.filter(loc => {
+    const matchSearch = searchTerm === '' || 
+      loc.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      loc.email?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    if (filterStatus === 'actifs') return matchSearch && isLocataireActif(loc.id);
+    if (filterStatus === 'anciens') return matchSearch && !isLocataireActif(loc.id);
+    return matchSearch;
+  });
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement des locataires...</p>
-        </div>
+      <div className="flex items-center justify-center h-full bg-dark-950">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-accent-blue"></div>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
-          <p className="text-red-800 font-semibold mb-2">❌ Erreur</p>
-          <p className="text-red-600">{error}</p>
-          <button 
-            onClick={loadData}
-            className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-          >
-            Réessayer
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const headerActions = (
+    <button 
+      onClick={() => setShowForm(true)}
+      className="flex items-center gap-2 px-7 py-3.5 bg-gradient-to-r from-accent-blue to-accent-purple hover:from-accent-blue-light hover:to-accent-purple-light rounded-2xl font-semibold transition-all shadow-xl shadow-accent-blue/30 hover:shadow-2xl hover:shadow-accent-blue/40 hover:scale-105"
+    >
+      <Plus className="h-5 w-5" />
+      Ajouter un locataire
+    </button>
+  );
+
+  const activeCount = locataires.filter(l => isLocataireActif(l.id)).length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">👥 Locataires</h1>
-              <p className="text-gray-600 mt-1">{locataires.length} locataire(s)</p>
-            </div>
-            <button 
-              onClick={() => setShowForm(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
-            >
-              + Ajouter un Locataire
-            </button>
-          </div>
+    <PageLayout
+      title="Locataires"
+      subtitle={`${locataires.length} locataire${locataires.length > 1 ? 's' : ''} • ${activeCount} actif${activeCount > 1 ? 's' : ''}`}
+      headerActions={headerActions}
+    >
+      {/* Filtres */}
+      <div className="flex items-center gap-4 mb-10">
+        {/* Recherche */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-accent-blue" />
+          <input
+            type="text"
+            placeholder="Rechercher un locataire..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-14 pr-5 py-4 bg-dark-900 rounded-2xl text-white placeholder-light-400 focus:outline-none focus:ring-2 focus:ring-accent-blue/50 transition shadow-card border border-dark-600/30"
+          />
+        </div>
+
+        {/* Filtres statut */}
+        <div className="flex gap-3 bg-dark-900 rounded-2xl p-2 shadow-card border border-dark-600/30">
+          <button
+            onClick={() => setFilterStatus('all')}
+            className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              filterStatus === 'all' ? 'bg-accent-blue/20 text-accent-blue shadow-glow-blue' : 'text-light-400 hover:text-white hover:bg-dark-800'
+            }`}
+          >
+            Tous
+          </button>
+          <button
+            onClick={() => setFilterStatus('actifs')}
+            className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              filterStatus === 'actifs' ? 'bg-accent-blue/20 text-accent-blue shadow-glow-blue' : 'text-light-400 hover:text-white hover:bg-dark-800'
+            }`}
+          >
+            Actifs
+          </button>
+          <button
+            onClick={() => setFilterStatus('anciens')}
+            className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              filterStatus === 'anciens' ? 'bg-accent-blue/20 text-accent-blue shadow-glow-blue' : 'text-light-400 hover:text-white hover:bg-dark-800'
+            }`}
+          >
+            Anciens
+          </button>
         </div>
       </div>
 
       {/* Liste des locataires */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {locataires.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <Users className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Aucun locataire pour le moment
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Commencez par ajouter votre premier locataire !
-            </p>
-            <button 
-              onClick={() => setShowForm(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
+      <div className="space-y-5">
+        {filteredLocataires.map(locataire => {
+          const locataireBaux = getLocataireBaux(locataire.id);
+          const bailActif = locataireBaux.find(b => b.statut === 'ACTIF');
+          const isActif = isLocataireActif(locataire.id);
+
+          return (
+            <div
+              key={locataire.id}
+              className="bg-dark-900 rounded-2xl border border-dark-600/30 shadow-card hover:shadow-card-hover hover:scale-[1.01] transition-all p-7"
             >
-              + Ajouter mon premier locataire
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {locataires.map((locataire) => {
-              const isEntreprise = locataire.typeLocataire === 'ENTREPRISE';
-              
-              return (
-                <div
-                  key={locataire.id}
-                  className="bg-white rounded-xl shadow-lg hover:shadow-xl transition overflow-hidden"
-                >
-                  {/* Header avec icône et actions */}
-                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {isEntreprise ? (
-                        <Building2 className="h-8 w-8 text-white" />
-                      ) : (
-                        <User className="h-8 w-8 text-white" />
-                      )}
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        isEntreprise 
-                          ? 'bg-white/20 text-white' 
-                          : 'bg-white/20 text-white'
-                      }`}>
-                        {isEntreprise ? '🏢 Entreprise' : '👤 Particulier'}
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => openEditForm(locataire)}
-                        className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition"
-                        title="Modifier"
-                      >
-                        <Edit className="h-4 w-4 text-white" />
-                      </button>
-                      <button
-                        onClick={() => setLocataireToDelete(locataire)}
-                        className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition"
-                        title="Supprimer"
-                      >
-                        <Trash2 className="h-4 w-4 text-white" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Contenu */}
-                  <div className="p-6">
-                    {/* Nom / Raison sociale */}
-                    <h3 className="text-xl font-bold text-gray-900 mb-1">
-                      {isEntreprise ? locataire.raisonSociale : `${locataire.prenom} ${locataire.nom}`}
-                    </h3>
-                    
-                    {/* Contact (nom pour entreprise) */}
-                    {isEntreprise && (
-                      <p className="text-sm text-gray-600 mb-3">
-                        Contact: {locataire.prenom} {locataire.nom}
-                      </p>
-                    )}
-
-                    {/* Infos entreprise */}
-                    {isEntreprise && (
-                      <div className="space-y-1 mb-4 text-sm">
-                        {locataire.siret && (
-                          <p className="text-gray-600">
-                            <span className="font-semibold">SIRET:</span> {locataire.siret}
-                          </p>
-                        )}
-                        {locataire.formeJuridique && (
-                          <p className="text-gray-600">
-                            <span className="font-semibold">Forme:</span> {locataire.formeJuridique}
-                          </p>
-                        )}
-                        {locataire.capitalSocial && (
-                          <p className="text-gray-600">
-                            <span className="font-semibold">Capital:</span> {locataire.capitalSocial.toLocaleString('fr-FR')} €
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Contact */}
-                    <div className="space-y-2 mb-4">
-                      <p className="text-sm text-gray-600 flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        {locataire.email}
-                      </p>
-                      {locataire.telephone && (
-                        <p className="text-sm text-gray-600 flex items-center gap-2">
-                          <Phone className="h-4 w-4" />
-                          {locataire.telephone}
-                        </p>
-                      )}
-                      {locataire.ville && (
-                        <p className="text-sm text-gray-600 flex items-center gap-2">
-                          <MapPin className="h-4 w-4" />
-                          {locataire.ville}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Bien loué */}
-                    {locataire.bien && (
-                      <div className="mt-4 pt-4 border-t">
-                        <p className="text-xs text-gray-500 mb-1">Bien loué:</p>
-                        <p className="text-sm font-semibold text-blue-600">
-                          {locataire.bien.adresse}, {locataire.bien.ville}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Dates */}
-                    {locataire.dateEntree && (
-                      <div className="mt-4 pt-4 border-t">
-                        <p className="text-xs text-gray-500">
-                          Entrée: {new Date(locataire.dateEntree).toLocaleDateString('fr-FR')}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+              <div className="flex items-start gap-5">
+                {/* Avatar */}
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
+                  locataire.type === 'ENTREPRISE' ? 'bg-accent-blue/10 border border-accent-blue/20' : 'bg-accent-purple/10 border border-accent-purple/20'
+                }`}>
+                  {locataire.type === 'ENTREPRISE' ? (
+                    <Building2 className="h-8 w-8 text-accent-blue" />
+                  ) : (
+                    <User className="h-8 w-8 text-accent-purple" />
+                  )}
                 </div>
-              );
-            })}
-          </div>
-        )}
+
+                {/* Infos principales */}
+                <div className="flex-1">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-white mb-1.5">{locataire.nom}</h3>
+                      <p className="text-sm text-light-400">
+                        {locataire.type === 'ENTREPRISE' ? 'Entreprise' : 'Particulier'}
+                        {locataire.email && ` • ${locataire.email}`}
+                      </p>
+                    </div>
+                    <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                      isActif ? 'bg-accent-green/20 text-accent-green border border-accent-green/30' : 'bg-dark-800 text-light-400 border border-dark-700'
+                    }`}>
+                      {isActif ? '● Actif' : 'Ancien'}
+                    </span>
+                  </div>
+
+                  {/* Bail actif */}
+                  {bailActif && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5 p-5 bg-dark-800/50 rounded-2xl border border-dark-700/50">
+                      <div>
+                        <p className="text-xs text-light-500 mb-2 font-medium">Bien loué</p>
+                        <p className="text-sm text-white font-semibold">{bailActif.bien?.adresse}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-light-500 mb-2 font-medium">Loyer mensuel</p>
+                        <p className="text-sm text-accent-green font-bold">
+                          {bailActif.loyerHC.toLocaleString('fr-FR')} € HC
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-light-500 mb-2 font-medium">Fin du bail</p>
+                        <p className="text-sm text-white font-semibold">
+                          {new Date(bailActif.dateFin).toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Historique */}
+                  {locataireBaux.length > 1 && (
+                    <div className="mt-4 text-sm text-light-400 font-medium">
+                      Historique: {locataireBaux.length} bail{locataireBaux.length > 1 ? 'aux' : ''}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
+
+      {filteredLocataires.length === 0 && (
+        <div className="bg-dark-900 rounded-3xl border border-dark-600/30 shadow-card p-20 text-center">
+          <Users className="h-20 w-20 text-accent-blue/50 mx-auto mb-6" />
+          <p className="text-light-300 text-xl">
+            {searchTerm ? 'Aucun locataire ne correspond à votre recherche' : 'Aucun locataire'}
+          </p>
+        </div>
+      )}
 
       {/* Modal Formulaire */}
       {showForm && (
@@ -276,43 +243,7 @@ function LocatairesPage() {
           biensList={biens}
         />
       )}
-
-      {/* Modal Confirmation Suppression */}
-      {locataireToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">
-              🗑️ Supprimer ce locataire ?
-            </h3>
-            <p className="text-gray-600 mb-2">
-              Êtes-vous sûr de vouloir supprimer :
-            </p>
-            <p className="font-semibold text-gray-900 mb-6">
-              {locataireToDelete.typeLocataire === 'ENTREPRISE' 
-                ? locataireToDelete.raisonSociale 
-                : `${locataireToDelete.prenom} ${locataireToDelete.nom}`}
-            </p>
-            <p className="text-sm text-red-600 mb-6">
-              ⚠️ Cette action est irréversible !
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setLocataireToDelete(null)}
-                className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition font-semibold"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={() => handleDeleteLocataire(locataireToDelete.id)}
-                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-semibold"
-              >
-                Supprimer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </PageLayout>
   );
 }
 

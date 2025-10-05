@@ -64,6 +64,10 @@ export const bauxAPI = {
     const response = await api.get(`/baux/${id}`);
     return response.data;
   },
+  getByBien: async (bienId) => {
+    const response = await api.get(`/baux/bien/${bienId}`);
+    return response.data;
+  },
   create: async (bailData) => {
     const response = await api.post('/baux', bailData);
     return response.data;
@@ -324,6 +328,5 @@ export const photosAPI = {
     return response.data;
   },
 };
-
 
 export default api;

@@ -1,35 +1,39 @@
 import { useState } from 'react';
-import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
 import DashboardPage from './pages/DashboardPage';
 import BiensPage from './pages/BiensPage';
+import BienDetailPage from './pages/BienDetailPage';
 import LocatairesPage from './pages/LocatairesPage';
-import BauxPage from './pages/BauxPage';
-import FacturesPage from './pages/FacturesPage';
-import TravauxPage from './pages/TravauxPage';
 import ContactsPage from './pages/ContactsPage';
-import PretsPage from './pages/PretsPage';
-import AssociesPage from './pages/AssociesPage';
 import DocumentsPage from './pages/DocumentsPage';
-import EvenementsFiscauxPage from './pages/EvenementsFiscauxPage';
+import AssociesPage from './pages/AssociesPage';
+import ParametresPage from './pages/ParametresPage';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [selectedBienId, setSelectedBienId] = useState(null);
+
+  const handleNavigate = (page, bienId = null) => {
+    setCurrentPage(page);
+    if (bienId) {
+      setSelectedBienId(bienId);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar currentPage={currentPage} onNavigate={setCurrentPage} />
+    <div className="flex h-screen bg-dark-950 overflow-hidden">
+      <Sidebar currentPage={currentPage} onNavigate={handleNavigate} />
       
-      {currentPage === 'dashboard' && <DashboardPage />}
-      {currentPage === 'biens' && <BiensPage />}
-      {currentPage === 'locataires' && <LocatairesPage />}
-      {currentPage === 'baux' && <BauxPage />}
-      {currentPage === 'factures' && <FacturesPage />}
-      {currentPage === 'travaux' && <TravauxPage />}
-      {currentPage === 'contacts' && <ContactsPage />}
-      {currentPage === 'prets' && <PretsPage />}
-      {currentPage === 'associes' && <AssociesPage />}
-      {currentPage === 'documents' && <DocumentsPage />}
-      {currentPage === 'evenements' && <EvenementsFiscauxPage />}
+      <div className="flex-1 overflow-y-auto relative">
+        {currentPage === 'dashboard' && <DashboardPage onNavigate={handleNavigate} />}
+        {currentPage === 'biens' && <BiensPage onNavigate={handleNavigate} />}
+        {currentPage === 'bien-detail' && <BienDetailPage bienId={selectedBienId} onNavigate={handleNavigate} />}
+        {currentPage === 'locataires' && <LocatairesPage />}
+        {currentPage === 'contacts' && <ContactsPage />}
+        {currentPage === 'documents' && <DocumentsPage />}
+        {currentPage === 'associes' && <AssociesPage />}
+        {currentPage === 'parametres' && <ParametresPage />}
+      </div>
     </div>
   );
 }

@@ -76,27 +76,32 @@ function DocumentForm({ onClose, onSubmit, documentToEdit = null, biensList = []
   const showExpirationField = ['DPE', 'DIAGNOSTIC'].includes(formData.type);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">
+    <>
+      {/* Fond flou sur toute la page */}
+      <div className="absolute inset-0 bg-black/60 z-[9998]" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }} onClick={onClose} />
+      
+      {/* Formulaire centré dans la zone de contenu */}
+      <div className="absolute inset-0 flex items-center justify-center z-[9999]" style={{ position: 'fixed', top: 0, left: '256px', right: 0, bottom: 0, padding: '2rem 4rem', pointerEvents: 'none' }}>
+        <div className="bg-[#1a1a1a] rounded-2xl border border-gray-800 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" style={{ pointerEvents: 'auto' }}>
+        <div className="sticky top-0 bg-[#1a1a1a] border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-white">
             {isEditMode ? 'Modifier le Document' : 'Ajouter un Document'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition p-2 hover:bg-[#252525] rounded-lg">
             <X className="h-6 w-6" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-red-800">{error}</p>
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+              <p className="text-red-400">{error}</p>
             </div>
           )}
 
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Bien concerné</h3>
-            <select name="bienId" value={formData.bienId} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <h3 className="text-lg font-semibold text-white mb-4">Bien concerné</h3>
+            <select name="bienId" value={formData.bienId} onChange={handleChange} required className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-blue-500 transition">
               <option value="">Sélectionner un bien</option>
               {biensList.map(bien => (
                 <option key={bien.id} value={bien.id}>{bien.adresse}, {bien.ville}</option>
@@ -105,16 +110,16 @@ function DocumentForm({ onClose, onSubmit, documentToEdit = null, biensList = []
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Informations du document</h3>
+            <h3 className="text-lg font-semibold text-white mb-4">Informations du document</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nom du document *</label>
-                <input type="text" name="nom" value={formData.nom} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Acte de vente 2023" />
+                <label className="block text-sm font-medium text-gray-200 mb-1">Nom du document *</label>
+                <input type="text" name="nom" value={formData.nom} onChange={handleChange} required className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition" placeholder="Acte de vente 2023" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type de document *</label>
-                <select name="type" value={formData.type} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <label className="block text-sm font-medium text-gray-200 mb-1">Type de document *</label>
+                <select name="type" value={formData.type} onChange={handleChange} required className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-blue-500 transition">
                   <option value="ACTE_VENTE">Acte de vente</option>
                   <option value="DPE">DPE</option>
                   <option value="BAIL">Bail</option>
@@ -127,13 +132,13 @@ function DocumentForm({ onClose, onSubmit, documentToEdit = null, biensList = []
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date du document</label>
-                  <input type="date" name="dateDocument" value={formData.dateDocument} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <label className="block text-sm font-medium text-gray-200 mb-1">Date du document</label>
+                  <input type="date" name="dateDocument" value={formData.dateDocument} onChange={handleChange} className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-blue-500 transition" />
                 </div>
                 {showExpirationField && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date d'expiration</label>
-                    <input type="date" name="dateExpiration" value={formData.dateExpiration} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                    <label className="block text-sm font-medium text-gray-200 mb-1">Date d'expiration</label>
+                    <input type="date" name="dateExpiration" value={formData.dateExpiration} onChange={handleChange} className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-blue-500 transition" />
                   </div>
                 )}
               </div>
@@ -142,34 +147,35 @@ function DocumentForm({ onClose, onSubmit, documentToEdit = null, biensList = []
 
           {!isEditMode && (
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Fichier *</h3>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition">
+              <h3 className="text-lg font-semibold text-white mb-4">Fichier *</h3>
+              <div className="border-2 border-dashed border-gray-700 rounded-lg p-6 text-center hover:border-blue-500 transition">
                 <Upload className="mx-auto h-12 w-12 text-gray-400 mb-2" />
                 <label htmlFor="file-upload" className="cursor-pointer">
-                  <span className="text-blue-600 hover:text-blue-700 font-semibold">Choisir un fichier</span>
+                  <span className="text-blue-400 hover:text-blue-300 font-semibold">Choisir un fichier</span>
                   <input id="file-upload" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={handleFileChange} className="hidden" />
                 </label>
                 <p className="text-xs text-gray-500 mt-2">PDF, Images ou Documents Word (max 10MB)</p>
-                {formData.file && <p className="text-sm text-green-600 mt-2">✓ {formData.file.name}</p>}
+                {formData.file && <p className="text-sm text-green-400 mt-2">✓ {formData.file.name}</p>}
               </div>
             </div>
           )}
 
           {isEditMode && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">Le fichier ne peut pas être modifié. Pour changer le fichier, supprimez ce document et créez-en un nouveau.</p>
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+              <p className="text-sm text-blue-400">Le fichier ne peut pas être modifié. Pour changer le fichier, supprimez ce document et créez-en un nouveau.</p>
             </div>
           )}
 
-          <div className="flex gap-3 pt-4 border-t">
-            <button type="button" onClick={onClose} className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition font-semibold">Annuler</button>
-            <button type="submit" disabled={loading} className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+          <div className="flex gap-3 pt-4 border-t border-gray-800">
+            <button type="button" onClick={onClose} className="flex-1 px-6 py-3 border border-gray-700 rounded-lg text-gray-200 hover:bg-[#252525] transition font-semibold">Annuler</button>
+            <button type="submit" disabled={loading} className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-lg transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20">
               {loading ? (isEditMode ? 'Modification...' : 'Création...') : (isEditMode ? 'Modifier' : 'Créer le document')}
             </button>
           </div>
         </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

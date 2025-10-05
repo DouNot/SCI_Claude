@@ -1,68 +1,128 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import "tailwindcss";
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+/* Couleurs personnalisées pour Tailwind v4 */
+@theme {
+  --color-dark-950: #0a0a0f;
+  --color-dark-900: #1c1c24;
+  --color-dark-850: #23232e;
+  --color-dark-800: #2a2a38;
+  --color-dark-700: #34364a;
+  --color-dark-600: #3f4259;
+  
+  --color-light-100: #ffffff;
+  --color-light-200: #e8e9ef;
+  --color-light-300: #b4b7c9;
+  --color-light-400: #8b8fa8;
+  --color-light-500: #696d88;
+  
+  --color-accent-blue: #3b82f6;
+  --color-accent-blue-light: #60a5fa;
+  --color-accent-blue-dark: #2563eb;
+  
+  --color-accent-purple: #8b5cf6;
+  --color-accent-purple-light: #a78bfa;
+  --color-accent-purple-dark: #7c3aed;
+  
+  --color-accent-green: #22c55e;
+  --color-accent-green-light: #4ade80;
+  --color-accent-green-dark: #16a34a;
+  
+  --color-accent-orange: #f97316;
+  --color-accent-orange-light: #fb923c;
+  --color-accent-orange-dark: #ea580c;
+}
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+/* Animations personnalisées */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Classes utilitaires */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.4s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+/* Smooth scrolling */
+* {
+  scroll-behavior: smooth;
+}
+
+/* Scrollbar personnalisée */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0f;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3b82f6 0%, #8b5cf6 100%);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #60a5fa 0%, #a78bfa 100%);
+}
+
+/* Transitions globales */
+button, a, input, select, textarea {
+  transition: all 0.2s ease;
+}
+
+/* Focus states */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
+}
+
+/* Désactiver le highlight bleu sur mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Améliorer le rendu des fonts */
+body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+  background-color: #0a0a0f;
+  color: #ffffff;
 }
