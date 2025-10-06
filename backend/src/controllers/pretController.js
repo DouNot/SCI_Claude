@@ -13,6 +13,7 @@ const calculerAmortissement = (montant, tauxAnnuel, dureeEnMois, tauxAssurance =
   const mensualiteTotale = mensualiteCapitalInterets + mensualiteAssurance;
   
   let capitalRestant = montant;
+  let capitalAmortiCumule = 0;
   const tableau = [];
   
   const date = new Date(dateDebut);
@@ -21,6 +22,7 @@ const calculerAmortissement = (montant, tauxAnnuel, dureeEnMois, tauxAssurance =
     const interets = capitalRestant * tauxMensuel;
     const capitalAmorti = mensualiteCapitalInterets - interets;
     capitalRestant -= capitalAmorti;
+    capitalAmortiCumule += capitalAmorti;
     
     // Ajuster le dernier mois pour éviter les arrondis négatifs
     if (i === dureeEnMois && capitalRestant < 0) {
@@ -32,6 +34,7 @@ const calculerAmortissement = (montant, tauxAnnuel, dureeEnMois, tauxAssurance =
       date: new Date(date.getFullYear(), date.getMonth() + i - 1, date.getDate()),
       mensualite: mensualiteTotale,
       capital: capitalAmorti,
+      capitalAmortiCumule: capitalAmortiCumule,
       interets: interets,
       assurance: mensualiteAssurance,
       capitalRestant: Math.max(0, capitalRestant),

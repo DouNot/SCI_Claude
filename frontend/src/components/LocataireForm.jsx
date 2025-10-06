@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
-function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = [] }) {
+function LocataireForm({ onClose, onSubmit, locataireToEdit = null }) {
   const isEditMode = !!locataireToEdit;
 
   const [formData, setFormData] = useState({
@@ -18,10 +18,7 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
     ville: '',
     codePostal: '',
     dateNaissance: '',
-    profession: '',
-    dateEntree: '',
-    dateSortie: '',
-    bienId: '',
+    profession: ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -44,10 +41,7 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
         ville: locataireToEdit.ville || '',
         codePostal: locataireToEdit.codePostal || '',
         dateNaissance: locataireToEdit.dateNaissance ? locataireToEdit.dateNaissance.split('T')[0] : '',
-        profession: locataireToEdit.profession || '',
-        dateEntree: locataireToEdit.dateEntree ? locataireToEdit.dateEntree.split('T')[0] : '',
-        dateSortie: locataireToEdit.dateSortie ? locataireToEdit.dateSortie.split('T')[0] : '',
-        bienId: locataireToEdit.bienId || '',
+        profession: locataireToEdit.profession || ''
       });
     }
   }, [locataireToEdit]);
@@ -91,7 +85,7 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
       <div className="absolute inset-0 flex items-center justify-center z-[9999]" style={{ position: 'fixed', top: 0, left: '256px', right: 0, bottom: 0, padding: '2rem 4rem', pointerEvents: 'none' }}>
         <div className="bg-[#1a1a1a] rounded-2xl border border-gray-800 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" style={{ pointerEvents: 'auto' }}>
         {/* Header */}
-        <div className="sticky top-0 bg-[#1a1a1a] border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-[#1a1a1a] border-b border-gray-800 px-6 py-4 flex items-center justify-between z-10">
           <h2 className="text-2xl font-bold text-white">
             {isEditMode ? '✏️ Modifier le Locataire' : '👤 Ajouter un Locataire'}
           </h2>
@@ -160,7 +154,7 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-200 mb-1">
                     SIRET
                   </label>
                   <input
@@ -169,19 +163,19 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
                     value={formData.siret}
                     onChange={handleChange}
                     maxLength="14"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
                     placeholder="12345678901234"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-200 mb-1">
                     Forme juridique
                   </label>
                   <select
                     name="formeJuridique"
                     value={formData.formeJuridique}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-blue-500 transition"
                   >
                     <option value="">Sélectionner</option>
                     <option value="SARL">SARL</option>
@@ -195,7 +189,7 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-200 mb-1">
                     Capital social (€)
                   </label>
                   <input
@@ -204,7 +198,7 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
                     value={formData.capitalSocial}
                     onChange={handleChange}
                     step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
                     placeholder="10000"
                   />
                 </div>
@@ -219,7 +213,7 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-200 mb-1">
                   Nom *
                 </label>
                 <input
@@ -228,12 +222,12 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
                   value={formData.nom}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
                   placeholder="Dupont"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-200 mb-1">
                   Prénom *
                 </label>
                 <input
@@ -242,7 +236,7 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
                   value={formData.prenom}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
                   placeholder="Jean"
                 />
               </div>
@@ -251,7 +245,7 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
               {!isEntreprise && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-200 mb-1">
                       Date de naissance
                     </label>
                     <input
@@ -259,11 +253,11 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
                       name="dateNaissance"
                       value={formData.dateNaissance}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-blue-500 transition"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-200 mb-1">
                       Profession
                     </label>
                     <input
@@ -271,7 +265,7 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
                       name="profession"
                       value={formData.profession}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
                       placeholder="Ingénieur"
                     />
                   </div>
@@ -282,10 +276,10 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
 
           {/* Contact */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">📞 Contact</h3>
+            <h3 className="text-lg font-semibold text-white mb-4">📞 Contact</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-200 mb-1">
                   Email *
                 </label>
                 <input
@@ -294,12 +288,12 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
                   placeholder={isEntreprise ? "contact@entreprise.fr" : "jean.dupont@example.com"}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-200 mb-1">
                   Téléphone
                 </label>
                 <input
@@ -307,7 +301,7 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
                   name="telephone"
                   value={formData.telephone}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
                   placeholder="06 12 34 56 78"
                 />
               </div>
@@ -316,12 +310,12 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
 
           {/* Adresse */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <h3 className="text-lg font-semibold text-white mb-4">
               📍 {isEntreprise ? 'Adresse Siège Social' : 'Adresse'}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-200 mb-1">
                   Adresse
                 </label>
                 <input
@@ -329,12 +323,12 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
                   name="adresse"
                   value={formData.adresse}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
                   placeholder="12 rue de la Paix"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-200 mb-1">
                   Ville
                 </label>
                 <input
@@ -342,12 +336,12 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
                   name="ville"
                   value={formData.ville}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
                   placeholder="Paris"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-200 mb-1">
                   Code Postal
                 </label>
                 <input
@@ -355,57 +349,8 @@ function LocataireForm({ onClose, onSubmit, locataireToEdit = null, biensList = 
                   name="codePostal"
                   value={formData.codePostal}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
                   placeholder="75001"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Location */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">🏠 Location</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Bien loué
-                </label>
-                <select
-                  name="bienId"
-                  value={formData.bienId}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Aucun bien</option>
-                  {biensList.map(bien => (
-                    <option key={bien.id} value={bien.id}>
-                      {bien.adresse}, {bien.ville}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Date d'entrée
-                </label>
-                <input
-                  type="date"
-                  name="dateEntree"
-                  value={formData.dateEntree}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Date de sortie
-                </label>
-                <input
-                  type="date"
-                  name="dateSortie"
-                  value={formData.dateSortie}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             </div>

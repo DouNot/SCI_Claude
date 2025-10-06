@@ -13,7 +13,7 @@ function BiensCard({ bien, onClick }) {
 
   const Icon = typeIcons[bien.type] || Home;
   const photoUrl = bien.photos?.find(p => p.estPrincipale)?.url || bien.photos?.[0]?.url;
-  const isLoue = bien.loyerHC > 0;
+  const isLoue = bien.statut === 'LOUE' || (bien.bailActif && bien.bailActif.statut === 'ACTIF');
 
   return (
     <div

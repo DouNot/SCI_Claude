@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { locatairesAPI, bauxAPI, biensAPI } from '../services/api';
-import { Plus, Search, Users, Building2, User } from 'lucide-react';
+import { Plus, Search, Users, Building2, User, FileText, Pencil, Trash2, ExternalLink } from 'lucide-react';
 import LocataireForm from '../components/LocataireForm';
+import QuittanceForm from '../components/QuittanceForm';
 import PageLayout from '../components/PageLayout';
 
-function LocatairesPage() {
+function LocatairesPage({ onNavigate }) {
   const [locataires, setLocataires] = useState([]);
   const [baux, setBaux] = useState([]);
   const [biens, setBiens] = useState([]);
@@ -13,6 +14,8 @@ function LocatairesPage() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [showForm, setShowForm] = useState(false);
   const [locataireToEdit, setLocataireToEdit] = useState(null);
+  const [showQuittanceForm, setShowQuittanceForm] = useState(false);
+  const [selectedBail, setSelectedBail] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -60,6 +63,28 @@ function LocatairesPage() {
   const closeForm = () => {
     setShowForm(false);
     setLocataireToEdit(null);
+  };
+
+  const handleDeleteLocataire = async (id) => {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce locataire ?\n\nCette action est irréversible.')) {
+      try {
+        await locatairesAPI.delete(id);
+        await loadData();
+      } catch (err) {
+        console.error('Erreur suppression:', err);
+        alert('Erreur lors de la suppression du locataire');
+      }
+    }
+  };
+
+  const openEditForm = (locataire) => {
+    setLocataireToEdit(locataire);
+    setShowForm(true);
+  };
+
+  const openQuittanceForm = (bail) => {
+    setSelectedBail(bail);
+    setShowQuittanceForm(true);
   };
 
   const getLocataireBaux = (locataireId) => {
@@ -183,32 +208,65 @@ function LocatairesPage() {
                         {locataire.email && ` • ${locataire.email}`}
                       </p>
                     </div>
-                    <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
-                      isActif ? 'bg-accent-green/20 text-accent-green border border-accent-green/30' : 'bg-dark-800 text-light-400 border border-dark-700'
-                    }`}>
-                      {isActif ? '● Actif' : 'Ancien'}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                        isActif ? 'bg-accent-green/20 text-accent-green border border-accent-green/30' : 'bg-dark-800 text-light-400 border border-dark-700'
+                      }`}>
+                        {isActif ? '● Actif' : 'Ancien'}
+                      </span>
+                      <button
+                        onClick={() => openEditForm(locataire)}
+                        className="p-2.5 bg-accent-blue/10 hover:bg-accent-blue/20 rounded-xl border border-accent-blue/20 transition"
+                        title="Modifier"
+                      >
+                        <Pencil className="h-4 w-4 text-accent-blue" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteLocataire(locataire.id)}
+                        className="p-2.5 bg-red-500/10 hover:bg-red-500/20 rounded-xl border border-red-500/20 transition"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-400" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Bail actif */}
                   {bailActif && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5 p-5 bg-dark-800/50 rounded-2xl border border-dark-700/50">
-                      <div>
-                        <p className="text-xs text-light-500 mb-2 font-medium">Bien loué</p>
-                        <p className="text-sm text-white font-semibold">{bailActif.bien?.adresse}</p>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 p-5 bg-dark-800/50 rounded-2xl border border-dark-700/50">
+                        <div>
+                          <p className="text-xs text-light-500 mb-2 font-medium">Bien loué</p>
+                          <button
+                            onClick={() => onNavigate && onNavigate('bien-detail', bailActif.bienId)}
+                            className="text-sm text-white font-semibold hover:text-accent-blue transition flex items-center gap-2 group"
+                          >
+                            {bailActif.bien?.adresse}
+                            <ExternalLink className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition" />
+                          </button>
+                        </div>
+                        <div>
+                          <p className="text-xs text-light-500 mb-2 font-medium">Loyer mensuel</p>
+                          <p className="text-sm text-accent-green font-bold">
+                            {bailActif.loyerHC.toLocaleString('fr-FR')} € HC
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-light-500 mb-2 font-medium">Fin du bail</p>
+                          <p className="text-sm text-white font-semibold">
+                            {new Date(bailActif.dateFin).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-light-500 mb-2 font-medium">Loyer mensuel</p>
-                        <p className="text-sm text-accent-green font-bold">
-                          {bailActif.loyerHC.toLocaleString('fr-FR')} € HC
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-light-500 mb-2 font-medium">Fin du bail</p>
-                        <p className="text-sm text-white font-semibold">
-                          {new Date(bailActif.dateFin).toLocaleDateString('fr-FR')}
-                        </p>
-                      </div>
+                      
+                      {/* Bouton générer quittance */}
+                      <button
+                        onClick={() => openQuittanceForm(bailActif)}
+                        className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-accent-blue/20 to-accent-purple/20 hover:from-accent-blue/30 hover:to-accent-purple/30 border border-accent-blue/30 rounded-2xl text-accent-blue font-semibold transition-all shadow-card hover:shadow-card-hover"
+                      >
+                        <FileText className="h-5 w-5" />
+                        Générer une quittance de loyer
+                      </button>
                     </div>
                   )}
 
@@ -240,7 +298,17 @@ function LocatairesPage() {
           onClose={closeForm}
           onSubmit={locataireToEdit ? handleUpdateLocataire : handleCreateLocataire}
           locataireToEdit={locataireToEdit}
-          biensList={biens}
+        />
+      )}
+
+      {/* Modal Génération Quittance */}
+      {showQuittanceForm && selectedBail && (
+        <QuittanceForm
+          onClose={() => {
+            setShowQuittanceForm(false);
+            setSelectedBail(null);
+          }}
+          bail={selectedBail}
         />
       )}
     </PageLayout>

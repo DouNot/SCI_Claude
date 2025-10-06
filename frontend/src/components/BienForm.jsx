@@ -19,9 +19,6 @@ function BienForm({ onClose, onSubmit, bienToEdit = null }) {
     tauxNotaire: '',
     dateAchat: '',
     valeurActuelle: '',
-    loyerHC: '',
-    charges: '',
-    statut: 'LIBRE',
     description: '',
   });
 
@@ -47,9 +44,6 @@ function BienForm({ onClose, onSubmit, bienToEdit = null }) {
         tauxNotaire: '',
         dateAchat: bienToEdit.dateAchat ? bienToEdit.dateAchat.split('T')[0] : '',
         valeurActuelle: bienToEdit.valeurActuelle || '',
-        loyerHC: bienToEdit.loyerHC || '',
-        charges: bienToEdit.charges || '',
-        statut: bienToEdit.statut || 'LIBRE',
         description: bienToEdit.description || '',
       });
     }
@@ -439,34 +433,7 @@ function BienForm({ onClose, onSubmit, bienToEdit = null }) {
                   placeholder="380000"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-200 mb-2">
-                  Loyer HC (€/mois)
-                </label>
-                <input
-                  type="number"
-                  name="loyerHC"
-                  value={formData.loyerHC}
-                  onChange={handleChange}
-                  step="0.01"
-                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-                  placeholder="1200"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-200 mb-2">
-                  Charges (€/mois)
-                </label>
-                <input
-                  type="number"
-                  name="charges"
-                  value={formData.charges}
-                  onChange={handleChange}
-                  step="0.01"
-                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-                  placeholder="150"
-                />
-              </div>
+
             </div>
           </div>
 
@@ -474,22 +441,6 @@ function BienForm({ onClose, onSubmit, bienToEdit = null }) {
           <div>
             <h3 className="text-lg font-semibold text-white mb-4">Autres Informations</h3>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-200 mb-2">
-                  Statut
-                </label>
-                <select
-                  name="statut"
-                  value={formData.statut}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-blue-500 transition"
-                >
-                  <option value="LIBRE">Libre</option>
-                  <option value="LOUE">Loué</option>
-                  <option value="TRAVAUX">En travaux</option>
-                  <option value="VENTE">En vente</option>
-                </select>
-              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-200 mb-2">
                   Description

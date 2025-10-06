@@ -1,7 +1,7 @@
 import { MapPin, FileText } from 'lucide-react';
 
 function BiensTable({ biens, onBienClick }) {
-  const isLoue = (bien) => bien.loyerHC > 0;
+  const isLoue = (bien) => bien.statut === 'LOUE' || (bien.bailActif && bien.bailActif.statut === 'ACTIF');
 
   return (
     <div className="space-y-4">
@@ -40,9 +40,9 @@ function BiensTable({ biens, onBienClick }) {
               {/* Loyer HC avec badge coloré */}
               <div className="text-right min-w-[120px]">
                 <p className="text-xs text-light-500 mb-1.5">Loyer HC</p>
-                {isLoue(bien) ? (
+                {isLoue(bien) && bien.loyerActuel ? (
                   <p className="text-base font-semibold text-accent-green whitespace-nowrap">
-                    {bien.loyerHC.toLocaleString('fr-FR')} €/mois
+                    {bien.loyerActuel.toLocaleString('fr-FR')} €/mois
                   </p>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-orange/20 text-accent-orange text-sm font-medium border border-accent-orange/30">

@@ -9,16 +9,37 @@ exports.getAllBiens = asyncHandler(async (req, res) => {
     include: {
       compte: true,
       photos: true,
+      baux: {
+        where: {
+          statut: 'ACTIF'
+        },
+        include: {
+          locataire: true
+        }
+      },
     },
     orderBy: {
       createdAt: 'desc',
     },
   });
 
+  // Calculer le statut pour chaque bien
+  const biensAvecStatut = biens.map(bien => {
+    const bailActif = bien.baux && bien.baux.length > 0 ? bien.baux[0] : null;
+    return {
+      ...bien,
+      statut: bailActif ? 'LOUE' : 'LIBRE',
+      bailActif: bailActif,
+      loyerActuel: bailActif ? bailActif.loyerHC : null,
+      chargesActuelles: bailActif ? bailActif.charges : null,
+      locataireActuel: bailActif ? bailActif.locataire : null
+    };
+  });
+
   res.status(200).json({
     success: true,
-    count: biens.length,
-    data: biens,
+    count: biensAvecStatut.length,
+    data: biensAvecStatut,
   });
 });
 
@@ -38,6 +59,14 @@ exports.getBienById = asyncHandler(async (req, res) => {
       travaux: true,
       factures: true,
       prets: true,
+      baux: {
+        where: {
+          statut: 'ACTIF'
+        },
+        include: {
+          locataire: true
+        }
+      },
     },
   });
 
@@ -48,9 +77,20 @@ exports.getBienById = asyncHandler(async (req, res) => {
     });
   }
 
+  // Calculer le statut du bien
+  const bailActif = bien.baux && bien.baux.length > 0 ? bien.baux[0] : null;
+  const bienAvecStatut = {
+    ...bien,
+    statut: bailActif ? 'LOUE' : 'LIBRE',
+    bailActif: bailActif,
+    loyerActuel: bailActif ? bailActif.loyerHC : null,
+    chargesActuelles: bailActif ? bailActif.charges : null,
+    locataireActuel: bailActif ? bailActif.locataire : null
+  };
+
   res.status(200).json({
     success: true,
-    data: bien,
+    data: bienAvecStatut,
   });
 });
 
@@ -72,7 +112,7 @@ exports.createBien = asyncHandler(async (req, res) => {
   const dataToCreate = { ...data };
 
   // Champs numériques : convertir "" en null ou en nombre
-  const numericFields = ['surface', 'nbPieces', 'nbChambres', 'etage', 'prixAchat', 'fraisNotaire', 'valeurActuelle', 'loyerHC', 'charges'];
+  const numericFields = ['surface', 'nbPieces', 'nbChambres', 'etage', 'prixAchat', 'fraisNotaire', 'valeurActuelle'];
   
   numericFields.forEach(field => {
     if (dataToCreate[field] === '' || dataToCreate[field] === null || dataToCreate[field] === undefined) {
@@ -94,6 +134,9 @@ exports.createBien = asyncHandler(async (req, res) => {
 
   // Ajouter le compteId par défaut (prépare V2)
   dataToCreate.compteId = process.env.DEFAULT_COMPTE_ID;
+  
+  // Le statut sera toujours LIBRE à la création (pas de bail)
+  dataToCreate.statut = 'LIBRE';
 
   const bien = await prisma.bien.create({
     data: dataToCreate,
@@ -104,7 +147,7 @@ exports.createBien = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     success: true,
-    data: bien,
+    data: { ...bien, bailActif: null, loyerActuel: null, chargesActuelles: null, locataireActuel: null },
   });
 });
 
@@ -131,7 +174,7 @@ exports.updateBien = asyncHandler(async (req, res) => {
   const dataToUpdate = { ...data };
 
   // Champs numériques : convertir "" en null
-  const numericFields = ['surface', 'nbPieces', 'nbChambres', 'etage', 'prixAchat', 'fraisNotaire', 'valeurActuelle', 'loyerHC', 'charges'];
+  const numericFields = ['surface', 'nbPieces', 'nbChambres', 'etage', 'prixAchat', 'fraisNotaire', 'valeurActuelle'];
   
   numericFields.forEach(field => {
     if (dataToUpdate[field] === '' || dataToUpdate[field] === null || dataToUpdate[field] === undefined) {

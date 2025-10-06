@@ -69,6 +69,37 @@ exports.getBailById = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Récupérer tous les baux d'un bien
+// @route   GET /api/baux/bien/:bienId
+// @access  Public
+exports.getBauxByBien = asyncHandler(async (req, res) => {
+  const { bienId } = req.params;
+
+  const baux = await prisma.bail.findMany({
+    where: { bienId },
+    include: {
+      locataire: {
+        select: {
+          id: true,
+          nom: true,
+          prenom: true,
+          typeLocataire: true,
+          raisonSociale: true,
+        },
+      },
+    },
+    orderBy: {
+      dateDebut: 'desc',
+    },
+  });
+
+  res.status(200).json({
+    success: true,
+    count: baux.length,
+    data: baux,
+  });
+});
+
 // @desc    Créer un nouveau bail
 // @route   POST /api/baux
 // @access  Public
@@ -122,6 +153,14 @@ exports.createBail = asyncHandler(async (req, res) => {
       locataire: true,
     },
   });
+
+  // Mettre à jour le statut du bien si le bail est actif
+  if (dataToCreate.statut === 'ACTIF') {
+    await prisma.bien.update({
+      where: { id: dataToCreate.bienId },
+      data: { statut: 'LOUE' }
+    });
+  }
 
   res.status(201).json({
     success: true,
@@ -193,6 +232,24 @@ exports.updateBail = asyncHandler(async (req, res) => {
     },
   });
 
+  // Mettre à jour le statut du bien
+  if (bail.statut !== bailExistant.statut) {
+    // Vérifier s'il y a d'autres baux actifs pour ce bien
+    const autresBauxActifs = await prisma.bail.count({
+      where: {
+        bienId: bail.bienId,
+        statut: 'ACTIF',
+        id: { not: id }
+      }
+    });
+
+    const nouveauStatut = (bail.statut === 'ACTIF' || autresBauxActifs > 0) ? 'LOUE' : 'LIBRE';
+    await prisma.bien.update({
+      where: { id: bail.bienId },
+      data: { statut: nouveauStatut }
+    });
+  }
+
   res.status(200).json({
     success: true,
     data: bail,
@@ -220,6 +277,21 @@ exports.deleteBail = asyncHandler(async (req, res) => {
   await prisma.bail.delete({
     where: { id },
   });
+
+  // Mettre à jour le statut du bien si c'était le dernier bail actif
+  const autresBauxActifs = await prisma.bail.count({
+    where: {
+      bienId: bail.bienId,
+      statut: 'ACTIF'
+    }
+  });
+
+  if (autresBauxActifs === 0) {
+    await prisma.bien.update({
+      where: { id: bail.bienId },
+      data: { statut: 'LIBRE' }
+    });
+  }
 
   res.status(200).json({
     success: true,

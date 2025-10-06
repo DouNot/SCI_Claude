@@ -28,7 +28,7 @@ function App() {
         {currentPage === 'dashboard' && <DashboardPage onNavigate={handleNavigate} />}
         {currentPage === 'biens' && <BiensPage onNavigate={handleNavigate} />}
         {currentPage === 'bien-detail' && <BienDetailPage bienId={selectedBienId} onNavigate={handleNavigate} />}
-        {currentPage === 'locataires' && <LocatairesPage />}
+        {currentPage === 'locataires' && <LocatairesPage onNavigate={handleNavigate} />}
         {currentPage === 'contacts' && <ContactsPage />}
         {currentPage === 'documents' && <DocumentsPage />}
         {currentPage === 'associes' && <AssociesPage />}

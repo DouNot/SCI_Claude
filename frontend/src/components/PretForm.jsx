@@ -12,7 +12,7 @@ function PretForm({ onClose, onSubmit, pretToEdit = null, biensList = [] }) {
     dateDebut: '',
     organisme: '',
     numeroContrat: '',
-    bienId: '',
+    bienId: biensList[0]?.id || '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -82,52 +82,54 @@ function PretForm({ onClose, onSubmit, pretToEdit = null, biensList = [] }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-dark-900 rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-dark-600/30">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">
+        <div className="sticky top-0 bg-dark-900 border-b border-dark-700/50 px-8 py-6 flex items-center justify-between rounded-t-3xl">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-white to-light-200 bg-clip-text text-transparent">
             {isEditMode ? 'Modifier le Prêt' : 'Ajouter un Prêt'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
+          <button onClick={onClose} className="text-light-400 hover:text-white transition p-2 hover:bg-dark-800 rounded-xl">
             <X className="h-6 w-6" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-8 space-y-8">
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-red-800">{error}</p>
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4">
+              <p className="text-red-400 font-medium">{error}</p>
             </div>
           )}
 
           {/* Bien concerné */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Bien concerné</h3>
-            <select
-              name="bienId"
-              value={formData.bienId}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Sélectionner un bien</option>
-              {biensList.map(bien => (
-                <option key={bien.id} value={bien.id}>
-                  {bien.adresse}, {bien.ville}
-                </option>
-              ))}
-            </select>
-          </div>
+          {biensList.length > 1 && (
+            <div>
+              <h3 className="text-lg font-bold text-white mb-4">Bien concerné</h3>
+              <select
+                name="bienId"
+                value={formData.bienId}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 bg-dark-800 border border-dark-600/50 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-accent-blue/50 transition"
+              >
+                <option value="">Sélectionner un bien</option>
+                {biensList.map(bien => (
+                  <option key={bien.id} value={bien.id}>
+                    {bien.adresse}, {bien.ville}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Caractéristiques du prêt */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Caractéristiques du prêt</h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h3 className="text-lg font-bold text-white mb-5">Caractéristiques du prêt</h3>
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-semibold text-light-300 mb-2">
                     Montant emprunté (€) *
                   </label>
                   <input
@@ -137,13 +139,13 @@ function PretForm({ onClose, onSubmit, pretToEdit = null, biensList = [] }) {
                     onChange={handleChange}
                     required
                     step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 bg-dark-800 border border-dark-600/50 rounded-2xl text-white placeholder-light-500 focus:outline-none focus:ring-2 focus:ring-accent-blue/50 transition"
                     placeholder="200000"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-semibold text-light-300 mb-2">
                     Taux d'intérêt annuel (%) *
                   </label>
                   <input
@@ -153,15 +155,15 @@ function PretForm({ onClose, onSubmit, pretToEdit = null, biensList = [] }) {
                     onChange={handleChange}
                     required
                     step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 bg-dark-800 border border-dark-600/50 rounded-2xl text-white placeholder-light-500 focus:outline-none focus:ring-2 focus:ring-accent-blue/50 transition"
                     placeholder="3.5"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-semibold text-light-300 mb-2">
                     Durée (en mois) *
                   </label>
                   <input
@@ -170,13 +172,13 @@ function PretForm({ onClose, onSubmit, pretToEdit = null, biensList = [] }) {
                     value={formData.duree}
                     onChange={handleChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 bg-dark-800 border border-dark-600/50 rounded-2xl text-white placeholder-light-500 focus:outline-none focus:ring-2 focus:ring-accent-blue/50 transition"
                     placeholder="240 (20 ans)"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-semibold text-light-300 mb-2">
                     Taux assurance annuel (%)
                   </label>
                   <input
@@ -185,14 +187,14 @@ function PretForm({ onClose, onSubmit, pretToEdit = null, biensList = [] }) {
                     value={formData.tauxAssurance}
                     onChange={handleChange}
                     step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 bg-dark-800 border border-dark-600/50 rounded-2xl text-white placeholder-light-500 focus:outline-none focus:ring-2 focus:ring-accent-blue/50 transition"
                     placeholder="0.36"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-semibold text-light-300 mb-2">
                   Date de début *
                 </label>
                 <input
@@ -201,22 +203,22 @@ function PretForm({ onClose, onSubmit, pretToEdit = null, biensList = [] }) {
                   value={formData.dateDebut}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-dark-800 border border-dark-600/50 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-accent-blue/50 transition"
                 />
               </div>
 
               {/* Mensualité estimée */}
               {mensualiteEstimee && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-blue-900">
+                <div className="bg-accent-blue/10 border border-accent-blue/30 rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-semibold text-accent-blue">
                       Mensualité estimée :
                     </span>
-                    <span className="text-2xl font-bold text-blue-900">
+                    <span className="text-3xl font-bold text-accent-blue">
                       {mensualiteEstimee.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                     </span>
                   </div>
-                  <p className="text-xs text-blue-700 mt-2">
+                  <p className="text-xs text-light-400">
                     Sur {formData.duree} mois ({(formData.duree / 12).toFixed(1)} ans)
                   </p>
                 </div>
@@ -226,10 +228,10 @@ function PretForm({ onClose, onSubmit, pretToEdit = null, biensList = [] }) {
 
           {/* Organisme bancaire */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Organisme bancaire</h3>
-            <div className="space-y-4">
+            <h3 className="text-lg font-bold text-white mb-5">Organisme bancaire</h3>
+            <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-semibold text-light-300 mb-2">
                   Nom de la banque *
                 </label>
                 <input
@@ -238,13 +240,13 @@ function PretForm({ onClose, onSubmit, pretToEdit = null, biensList = [] }) {
                   value={formData.organisme}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-dark-800 border border-dark-600/50 rounded-2xl text-white placeholder-light-500 focus:outline-none focus:ring-2 focus:ring-accent-blue/50 transition"
                   placeholder="Crédit Agricole"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-semibold text-light-300 mb-2">
                   Numéro de contrat
                 </label>
                 <input
@@ -252,7 +254,7 @@ function PretForm({ onClose, onSubmit, pretToEdit = null, biensList = [] }) {
                   name="numeroContrat"
                   value={formData.numeroContrat}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-dark-800 border border-dark-600/50 rounded-2xl text-white placeholder-light-500 focus:outline-none focus:ring-2 focus:ring-accent-blue/50 transition"
                   placeholder="123456789"
                 />
               </div>
@@ -260,18 +262,18 @@ function PretForm({ onClose, onSubmit, pretToEdit = null, biensList = [] }) {
           </div>
 
           {/* Buttons */}
-          <div className="flex gap-3 pt-4 border-t">
+          <div className="flex gap-4 pt-6 border-t border-dark-700/50">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition font-semibold"
+              className="flex-1 px-6 py-4 bg-dark-800 hover:bg-dark-700 border border-dark-600/50 rounded-2xl text-light-300 hover:text-white transition font-semibold"
             >
               Annuler
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-4 bg-gradient-to-r from-accent-blue to-accent-purple hover:from-accent-blue-light hover:to-accent-purple-light rounded-2xl text-white transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-accent-blue/30"
             >
               {loading ? (isEditMode ? 'Modification...' : 'Création...') : (isEditMode ? 'Modifier' : 'Créer le prêt')}
             </button>

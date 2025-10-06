@@ -352,10 +352,10 @@ function PretsPage() {
                     />
                     <Line 
                       type="monotone" 
-                      dataKey="capital" 
+                      dataKey="capitalAmortiCumule" 
                       stroke="#10b981" 
                       strokeWidth={2}
-                      name="Capital amorti"
+                      name="Capital amorti cumulé"
                       dot={false}
                     />
                     <Line 

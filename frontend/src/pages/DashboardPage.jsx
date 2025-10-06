@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { biensAPI, bauxAPI, evenementsFiscauxAPI, pretsAPI } from '../services/api';
 import { TrendingUp, Home, AlertCircle, Euro, ArrowUpRight, ChevronDown } from 'lucide-react';
-import { Line } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
+import { Line, Doughnut } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement);
 
 function DashboardPage({ onNavigate }) {
   const [biens, setBiens] = useState([]);
@@ -41,43 +41,140 @@ function DashboardPage({ onNavigate }) {
     }
   };
 
-  // Calculs financiers
-  const nombreBiens = biens.length;
-  const valeurTotaleBrute = biens.reduce((sum, b) => sum + (b.valeurActuelle || b.prixAchat), 0);
+  // Filtrer les biens selon la catégorie
+  const biensFiltres = categoryFilter === 'all' 
+    ? biens 
+    : biens.filter(b => b.type === categoryFilter);
+
+  // Calculs financiers sur les biens filtrés
+  const nombreBiens = biensFiltres.length;
+  const valeurTotaleBrute = biensFiltres.reduce((sum, b) => sum + (b.valeurActuelle || b.prixAchat), 0);
   
-  const capitalRestantDu = prets.reduce((sum, p) => {
+  // Filtrer les prêts des biens filtrés
+  const bienIdsFilters = new Set(biensFiltres.map(b => b.id));
+  const pretsFiltres = categoryFilter === 'all' ? prets : prets.filter(p => bienIdsFilters.has(p.bienId));
+
+  const capitalRestantDu = pretsFiltres.reduce((sum, p) => {
     const moisEcoules = Math.floor((new Date() - new Date(p.dateDebut)) / (1000 * 60 * 60 * 24 * 30));
-    const moisRestants = Math.max(0, (p.duree * 12) - moisEcoules);
-    return sum + (p.mensualite * moisRestants);
+    const moisRestants = Math.max(0, parseInt(p.duree) - moisEcoules);
+    const montant = parseFloat(p.montant || 0);
+    const tauxMensuel = (parseFloat(p.taux || 0) / 100) / 12;
+    
+    if (tauxMensuel === 0) {
+      // Si pas de taux, capital restant = montant restant linéaire
+      return sum + (montant * moisRestants / parseInt(p.duree));
+    }
+    
+    const mensualite = montant * (tauxMensuel * Math.pow(1 + tauxMensuel, parseInt(p.duree))) / (Math.pow(1 + tauxMensuel, parseInt(p.duree)) - 1);
+    
+    // Formule du capital restant dû
+    const capitalRestant = mensualite * ((Math.pow(1 + tauxMensuel, moisRestants) - 1) / (tauxMensuel * Math.pow(1 + tauxMensuel, moisRestants)));
+    
+    return sum + (isNaN(capitalRestant) ? 0 : capitalRestant);
   }, 0);
 
   const valeurTotaleNette = valeurTotaleBrute - capitalRestantDu;
-  const coutAcquisition = biens.reduce((sum, b) => sum + b.prixAchat + (b.fraisNotaire || 0), 0);
-  const plusValue = valeurTotaleNette - coutAcquisition;
-  const plusValuePct = coutAcquisition > 0 ? ((plusValue / coutAcquisition) * 100).toFixed(1) : 0;
-  const loyersMensuels = biens.reduce((sum, b) => sum + (b.loyerHC || 0), 0);
+  const coutAcquisition = biensFiltres.reduce((sum, b) => sum + b.prixAchat + (b.fraisNotaire || 0), 0);
+  const loyersMensuels = biensFiltres.reduce((sum, b) => sum + (b.loyerActuel || 0), 0);
+  
+  // Pour une SCI locative : on mesure le cash-flow (trésorerie réelle)
+  // Cash-flow = Loyers - Mensualités totales (capital + intérêts + assurance)
+  const loyersAnnuels = loyersMensuels * 12;
+  
+  // Calculer les mensualités totales (tout ce qui sort du compte)
+  const mensualitesPrets = pretsFiltres.reduce((sum, p) => sum + (parseFloat(p.mensualite) || 0), 0);
+  const chargesAnnuelles = mensualitesPrets * 12;
+  
+  const cashFlowAnnuel = loyersAnnuels - chargesAnnuelles;
+  const prixAchatTotal = biensFiltres.reduce((sum, b) => sum + b.prixAchat, 0);
+  const tauxRentabiliteNet = prixAchatTotal > 0 ? ((cashFlowAnnuel / prixAchatTotal) * 100).toFixed(2) : 0;
 
-  // Génération données graphique
+  // Génération données graphique (dépend de timeRange et viewType)
   const generateChartData = () => {
     const labels = [];
     const dataPoints = [];
-    const startDate = new Date('2023-09-18');
     const endDate = new Date();
-    const totalMonths = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24 * 30));
+    let startDate = new Date();
+    let stepDays = 1;
+    let maxPoints = 30;
+
+    // Définir la plage de temps en fonction du filtre
+    switch(timeRange) {
+      case '1J':
+        startDate.setDate(startDate.getDate() - 1);
+        stepDays = 1;
+        maxPoints = 24; // 24 heures
+        break;
+      case '7J':
+        startDate.setDate(startDate.getDate() - 7);
+        stepDays = 1;
+        maxPoints = 7;
+        break;
+      case '1M':
+        startDate.setMonth(startDate.getMonth() - 1);
+        stepDays = 1;
+        maxPoints = 30;
+        break;
+      case 'YTD':
+        startDate = new Date(endDate.getFullYear(), 0, 1);
+        stepDays = 7;
+        maxPoints = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24 * 7));
+        break;
+      case '1A':
+        startDate.setFullYear(startDate.getFullYear() - 1);
+        stepDays = 7;
+        maxPoints = 52;
+        break;
+      case 'TOUT':
+      default:
+        // Utiliser la date du premier bien acheté ou une date par défaut
+        const premierBien = biensFiltres.length > 0 
+          ? [...biensFiltres].sort((a, b) => new Date(a.dateAchat) - new Date(b.dateAchat))[0]
+          : null;
+        startDate = premierBien ? new Date(premierBien.dateAchat) : new Date('2023-01-01');
+        const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+        stepDays = Math.max(7, Math.floor(totalDays / 50));
+        maxPoints = Math.ceil(totalDays / stepDays);
+        break;
+    }
+
+    const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+    const step = Math.max(1, Math.floor(totalDays / maxPoints));
     
-    for (let i = 0; i <= totalMonths; i += 2) {
+    for (let i = 0; i <= totalDays; i += step) {
       const date = new Date(startDate);
-      date.setMonth(date.getMonth() + i);
-      labels.push(date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }));
+      date.setDate(date.getDate() + i);
       
-      const progress = i / totalMonths;
-      const value = coutAcquisition + (plusValue * progress);
+      // Format de date selon la période
+      let dateLabel;
+      if (timeRange === '1J') {
+        dateLabel = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      } else if (timeRange === '7J' || timeRange === '1M') {
+        dateLabel = date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+      } else {
+        dateLabel = date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+      }
+      labels.push(dateLabel);
+      
+      // Calculer le patrimoine net à cette date
+      // Patrimoine net = Valeur des biens - Capital restant dû à cette date
+      // On simule le remboursement progressif du capital
+      const progress = Math.min(1, i / totalDays);
+      const valeurActuelle = viewType === 'brut' ? valeurTotaleBrute : valeurTotaleNette;
+      
+      // Démarrer du coût d'acquisition et progresser vers la valeur actuelle nette
+      // La progression reflète le remboursement du capital
+      const debtInitiale = pretsFiltres.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
+      const patrimoineInitial = prixAchatTotal - debtInitiale; // Souvent négatif au début
+      
+      const value = patrimoineInitial + ((valeurActuelle - patrimoineInitial) * progress);
       dataPoints.push(Math.round(value));
     }
     
     return { labels, dataPoints };
   };
 
+  // Régénérer quand les filtres changent
   const { labels, dataPoints } = generateChartData();
 
   const chartData = {
@@ -175,6 +272,93 @@ function DashboardPage({ onNavigate }) {
 
   const currentCategory = categories.find(c => c.id === categoryFilter) || categories[0];
 
+  // Répartition par type de bien
+  const biensParType = biens.reduce((acc, bien) => {
+    const type = bien.type || 'AUTRE';
+    if (!acc[type]) {
+      acc[type] = { count: 0, valeur: 0 };
+    }
+    acc[type].count++;
+    acc[type].valeur += (bien.valeurActuelle || bien.prixAchat);
+    return acc;
+  }, {});
+
+  const typeLabels = {
+    'LOCAL_COMMERCIAL': 'Locaux commerciaux',
+    'APPARTEMENT': 'Appartements',
+    'MAISON': 'Maisons',
+    'BUREAUX': 'Bureaux',
+    'PARKING': 'Parkings',
+    'TERRAIN': 'Terrains',
+    'HANGAR': 'Hangars',
+    'AUTRE': 'Autres'
+  };
+
+  const typeColors = {
+    'LOCAL_COMMERCIAL': '#3b82f6',
+    'APPARTEMENT': '#8b5cf6',
+    'MAISON': '#10b981',
+    'BUREAUX': '#f59e0b',
+    'PARKING': '#ef4444',
+    'TERRAIN': '#06b6d4',
+    'HANGAR': '#ec4899',
+    'AUTRE': '#6b7280'
+  };
+
+  const repartitionData = {
+    labels: Object.keys(biensParType).map(type => typeLabels[type] || type),
+    datasets: [{
+      data: Object.values(biensParType).map(item => item.count),
+      backgroundColor: Object.keys(biensParType).map(type => typeColors[type] || '#6b7280'),
+      borderColor: '#1a1a1a',
+      borderWidth: 3,
+      hoverOffset: 8
+    }]
+  };
+
+  const repartitionOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'right',
+        labels: {
+          color: '#e8e9ef',
+          padding: 20,
+          font: {
+            size: 13,
+            weight: '500'
+          },
+          usePointStyle: true,
+          pointStyle: 'circle'
+        }
+      },
+      tooltip: {
+        enabled: true,
+        backgroundColor: 'rgba(28, 28, 36, 0.95)',
+        titleColor: '#fff',
+        bodyColor: '#e8e9ef',
+        borderColor: '#3b82f6',
+        borderWidth: 1,
+        padding: 16,
+        displayColors: true,
+        titleFont: { size: 14, weight: 'bold' },
+        bodyFont: { size: 13 },
+        callbacks: {
+          label: (context) => {
+            const type = Object.keys(biensParType)[context.dataIndex];
+            const data = biensParType[type];
+            return [
+              `${context.parsed} bien${context.parsed > 1 ? 's' : ''}`,
+              `Valeur: ${data.valeur.toLocaleString('fr-FR')} €`
+            ];
+          }
+        }
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full bg-dark-950">
@@ -190,11 +374,32 @@ function DashboardPage({ onNavigate }) {
         {/* Header avec filtres */}
         <div className="mb-10">
           <div className="flex items-center justify-between mb-8">
-            <div className="relative">
-              <button className="flex items-center gap-3 text-2xl font-bold bg-gradient-to-r from-white to-light-200 bg-clip-text text-transparent hover:opacity-80 transition">
-                Patrimoine {viewType === 'brut' ? 'brut' : 'net'}
-                <ChevronDown className="h-6 w-6 text-accent-blue" />
-              </button>
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-light-200 bg-clip-text text-transparent">
+                Patrimoine
+              </h1>
+              <div className="flex gap-2 bg-dark-900 rounded-2xl p-2 border border-dark-600/30">
+                <button
+                  onClick={() => setViewType('brut')}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                    viewType === 'brut'
+                      ? 'bg-accent-blue/20 text-accent-blue shadow-glow-blue'
+                      : 'text-light-400 hover:text-white hover:bg-dark-800'
+                  }`}
+                >
+                  Brut
+                </button>
+                <button
+                  onClick={() => setViewType('net')}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                    viewType === 'net'
+                      ? 'bg-accent-blue/20 text-accent-blue shadow-glow-blue'
+                      : 'text-light-400 hover:text-white hover:bg-dark-800'
+                  }`}
+                >
+                  Net
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center gap-4">
@@ -272,22 +477,49 @@ function DashboardPage({ onNavigate }) {
             </div>
 
             <div className="mb-8">
-              <p className="text-xs text-light-500 mb-3 font-medium">Plus-value - Tout</p>
+              <p className="text-xs text-light-500 mb-3 font-medium">Cash-flow annuel - {currentCategory.label}</p>
               <div className="flex items-end gap-3">
-                <p className={`text-5xl font-bold ${plusValue >= 0 ? 'text-accent-green' : 'text-red-400'}`}>
-                  {plusValue >= 0 ? '+' : ''}{plusValue.toLocaleString('fr-FR')} €
+                <p className={`text-5xl font-bold ${
+                  cashFlowAnnuel >= 0 ? 'text-accent-green' : 'text-red-400'
+                }`}>
+                  {cashFlowAnnuel >= 0 ? '+' : ''}{cashFlowAnnuel.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €/an
                 </p>
-                <div className={`flex items-center gap-1.5 mb-2 ${plusValuePct >= 0 ? 'text-accent-green' : 'text-red-400'}`}>
-                  <span className="text-lg font-bold">{plusValuePct >= 0 ? '+' : ''}{plusValuePct}%</span>
-                  {plusValuePct >= 0 && <ArrowUpRight className="h-5 w-5" />}
+                <div className={`flex items-center gap-1.5 mb-2 ${
+                  tauxRentabiliteNet >= 0 ? 'text-accent-green' : 'text-red-400'
+                }`}>
+                  <span className="text-lg font-bold">{tauxRentabiliteNet}%</span>
+                  {tauxRentabiliteNet >= 0 && <ArrowUpRight className="h-5 w-5" />}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 bg-dark-800/50 rounded-2xl border border-dark-700/50 mb-4">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-light-400">Loyers annuels</span>
+                  <span className="text-accent-green font-semibold">+{loyersAnnuels.toLocaleString('fr-FR')} €</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-light-400">Mensualités de prêt</span>
+                  <span className="text-red-400 font-semibold">-{chargesAnnuelles.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</span>
+                </div>
+                <div className="h-px bg-dark-700 my-2"></div>
+                <div className="flex justify-between">
+                  <span className="text-light-300 font-semibold">Cash-flow net</span>
+                  <span className={`font-bold ${
+                    cashFlowAnnuel >= 0 ? 'text-accent-green' : 'text-red-400'
+                  }`}>
+                    {cashFlowAnnuel.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
+                  </span>
                 </div>
               </div>
             </div>
 
             <div className="p-5 bg-dark-800/50 rounded-2xl border border-dark-700/50">
               <p className="text-sm text-light-400 leading-relaxed">
-                La plus-value latente est la différence entre votre prix d'achat unitaire et le prix actuel. 
-                Ce montant ne tient pas compte des plus-values réalisées.
+                Le cash-flow mesure l'argent qui entre et sort réellement de votre poche. 
+                Un cash-flow négatif signifie que vous devez compléter avec votre épargne, 
+                mais le capital remboursé augmente votre patrimoine net.
               </p>
             </div>
 
@@ -341,6 +573,18 @@ function DashboardPage({ onNavigate }) {
             <p className="text-4xl font-bold text-accent-orange">{capitalRestantDu.toLocaleString('fr-FR')} €</p>
           </div>
         </div>
+
+        {/* Répartition par type */}
+        {biens.length > 0 && (
+          <div className="mb-10">
+            <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-white to-light-200 bg-clip-text text-transparent">
+              Répartition par type de bien
+            </h2>
+            <div className="bg-dark-900 rounded-3xl p-8 border border-dark-600/30 shadow-card" style={{ height: '400px' }}>
+              <Doughnut data={repartitionData} options={repartitionOptions} />
+            </div>
+          </div>
+        )}
 
         {/* Alertes */}
         {(bauxExpirantBientot.length > 0 || evenementsProches.length > 0) && (

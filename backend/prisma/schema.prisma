@@ -61,8 +61,6 @@ model Bien {
   fraisNotaire   Float?
   dateAchat      DateTime
   valeurActuelle Float?
-  loyerHC        Float?
-  charges        Float?
   statut         String      @default("LIBRE")
   description    String?
   createdAt      DateTime    @default(now())
