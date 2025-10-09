@@ -30,6 +30,7 @@ model Compte {
   associes    Associe[]
   biens       Bien[]
   contacts    Contact[]
+  assembleesGenerales AssembleeGenerale[]
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -63,6 +64,8 @@ model Bien {
   valeurActuelle Float?
   statut         String      @default("LIBRE")
   description    String?
+  assuranceMensuelle Float?  // Assurance PNO, GLI, etc. (mensuelle)
+  taxeFonciere   Float?      // Taxe foncière annuelle
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   compteId       String
@@ -234,6 +237,20 @@ model Contact {
   updatedAt  DateTime @updatedAt
   compteId   String
   compte     Compte   @relation(fields: [compteId], references: [id], onDelete: Cascade)
+}
+
+model AssembleeGenerale {
+  id           String    @id @default(uuid())
+  type         String    // AGO (Ordinaire) ou AGE (Extraordinaire)
+  dateAG       DateTime  // Date de l'assemblée
+  titre        String?   // Ex: "AG Ordinaire 2024"
+  description  String?   // Résumé des décisions
+  url          String    // Chemin vers le PV PDF
+  filename     String    // Nom du fichier
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  compteId     String
+  compte       Compte    @relation(fields: [compteId], references: [id], onDelete: Cascade)
 }
 
 model EvenementFiscal {

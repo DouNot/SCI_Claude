@@ -329,4 +329,36 @@ export const photosAPI = {
   },
 };
 
+export const assembleesAPI = {
+  getAll: async () => {
+    const response = await api.get('/assemblees-generales');
+    return response.data;
+  },
+  getById: async (id) => {
+    const response = await api.get(`/assemblees-generales/${id}`);
+    return response.data;
+  },
+  create: async (agData) => {
+    const formData = new FormData();
+    formData.append('type', agData.type);
+    formData.append('dateAG', agData.dateAG);
+    if (agData.titre) formData.append('titre', agData.titre);
+    if (agData.description) formData.append('description', agData.description);
+    if (agData.pv) formData.append('pv', agData.pv);
+    
+    const response = await api.post('/assemblees-generales', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+  update: async (id, agData) => {
+    const response = await api.put(`/assemblees-generales/${id}`, agData);
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`/assemblees-generales/${id}`);
+    return response.data;
+  },
+};
+
 export default api;

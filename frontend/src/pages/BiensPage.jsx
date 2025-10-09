@@ -33,9 +33,10 @@ function BiensPage({ onNavigate }) {
 
   const handleCreateBien = async (bienData) => {
     try {
-      await biensAPI.create(bienData);
+      const result = await biensAPI.create(bienData);
       await loadBiens();
       setShowForm(false);
+      return result; // Retourner le bien créé pour récupérer son ID
     } catch (err) {
       throw err;
     }

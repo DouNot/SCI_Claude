@@ -70,14 +70,22 @@ function PretsPage() {
   };
 
   const viewPretDetails = async (pret) => {
+    console.log('=== DÉBUT viewPretDetails ===');
+    console.log('Prêt sélectionné:', pret);
     try {
       setLoadingDetails(true);
+      console.log('Appel API pour le prêt ID:', pret.id);
       const response = await pretsAPI.getById(pret.id);
+      console.log('Détails du prêt reçus:', response.data);
+      console.log('Amortissement:', response.data.amortissement);
       setPretDetails(response.data);
     } catch (err) {
-      console.error('Erreur:', err);
+      console.error('Erreur lors du chargement:', err);
+      console.error('Stack trace:', err.stack);
       alert('Impossible de charger les détails du prêt');
+      setLoadingDetails(false);
     } finally {
+      console.log('=== FIN viewPretDetails ===');
       setLoadingDetails(false);
     }
   };
@@ -275,13 +283,13 @@ function PretsPage() {
       )}
 
       {/* Modal Détails du prêt avec tableau d'amortissement */}
-      {pretDetails && (
+      {(pretDetails || loadingDetails) && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
               <h2 className="text-2xl font-bold text-gray-900">
-                Détails du prêt - {pretDetails.organisme}
+                Détails du prêt{pretDetails && pretDetails.organisme ? ` - ${pretDetails.organisme}` : ''}
               </h2>
               <button 
                 onClick={() => setPretDetails(null)} 
@@ -293,6 +301,15 @@ function PretsPage() {
 
             {/* Contenu */}
             <div className="p-6 space-y-6">
+              {loadingDetails ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Chargement du tableau d'amortissement...</p>
+                  </div>
+                </div>
+              ) : pretDetails && pretDetails.amortissement ? (
+              <>
               {/* Résumé */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-blue-50 rounded-lg p-4">
@@ -416,12 +433,22 @@ function PretsPage() {
                   </table>
                 </div>
               </div>
+              </>
+              ) : (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+                  <p className="text-red-800 font-semibold mb-2">Erreur</p>
+                  <p className="text-red-600">Impossible de charger le tableau d'amortissement</p>
+                  <pre className="mt-4 text-xs bg-white p-4 rounded overflow-auto">
+                    {JSON.stringify(pretDetails, null, 2)}
+                  </pre>
+                </div>
+              )}
             </div>
 
             {/* Footer */}
             <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4">
               <button
-                onClick={() => setPretDetails(null)}
+                onClick={() => { setPretDetails(null); setLoadingDetails(false); }}
                 className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
               >
                 Fermer

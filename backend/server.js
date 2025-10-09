@@ -27,6 +27,8 @@ const documentRoutes = require('./src/routes/documentRoutes');
 const evenementFiscalRoutes = require('./src/routes/evenementFiscalRoutes');
 const photoRoutes = require('./src/routes/photoRoutes');
 
+const agRoutes = require('./src/routes/agRoutes');
+
 // Utiliser les routes
 app.use('/api/biens', bienRoutes);
 app.use('/api/locataires', locataireRoutes);
@@ -40,6 +42,7 @@ app.use('/api/associes', associeRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/evenements-fiscaux', evenementFiscalRoutes);
 app.use('/api/photos', photoRoutes);
+app.use('/api/assemblees-generales', agRoutes);
 
 // Middleware de gestion des erreurs
 const errorHandler = require('./src/middlewares/errorHandler');

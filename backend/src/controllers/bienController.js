@@ -112,7 +112,7 @@ exports.createBien = asyncHandler(async (req, res) => {
   const dataToCreate = { ...data };
 
   // Champs numériques : convertir "" en null ou en nombre
-  const numericFields = ['surface', 'nbPieces', 'nbChambres', 'etage', 'prixAchat', 'fraisNotaire', 'valeurActuelle'];
+  const numericFields = ['surface', 'nbPieces', 'nbChambres', 'etage', 'prixAchat', 'fraisNotaire', 'valeurActuelle', 'assuranceMensuelle', 'taxeFonciere'];
   
   numericFields.forEach(field => {
     if (dataToCreate[field] === '' || dataToCreate[field] === null || dataToCreate[field] === undefined) {
@@ -174,7 +174,7 @@ exports.updateBien = asyncHandler(async (req, res) => {
   const dataToUpdate = { ...data };
 
   // Champs numériques : convertir "" en null
-  const numericFields = ['surface', 'nbPieces', 'nbChambres', 'etage', 'prixAchat', 'fraisNotaire', 'valeurActuelle'];
+  const numericFields = ['surface', 'nbPieces', 'nbChambres', 'etage', 'prixAchat', 'fraisNotaire', 'valeurActuelle', 'assuranceMensuelle', 'taxeFonciere'];
   
   numericFields.forEach(field => {
     if (dataToUpdate[field] === '' || dataToUpdate[field] === null || dataToUpdate[field] === undefined) {

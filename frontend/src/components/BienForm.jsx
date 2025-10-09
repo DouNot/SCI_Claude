@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Upload, Trash2 } from 'lucide-react';
+import { photosAPI } from '../services/api';
 
 function BienForm({ onClose, onSubmit, bienToEdit = null }) {
   const isEditMode = !!bienToEdit;
@@ -20,6 +21,8 @@ function BienForm({ onClose, onSubmit, bienToEdit = null }) {
     dateAchat: '',
     valeurActuelle: '',
     description: '',
+    assuranceMensuelle: '',
+    taxeFonciere: '',
   });
 
   const [photos, setPhotos] = useState([]);
@@ -45,6 +48,8 @@ function BienForm({ onClose, onSubmit, bienToEdit = null }) {
         dateAchat: bienToEdit.dateAchat ? bienToEdit.dateAchat.split('T')[0] : '',
         valeurActuelle: bienToEdit.valeurActuelle || '',
         description: bienToEdit.description || '',
+        assuranceMensuelle: bienToEdit.assuranceMensuelle || '',
+        taxeFonciere: bienToEdit.taxeFonciere || '',
       });
     }
   }, [bienToEdit]);
@@ -121,11 +126,25 @@ function BienForm({ onClose, onSubmit, bienToEdit = null }) {
     try {
       const { tauxNotaire, ...dataToSend } = formData;
       
+      let bienId;
       if (isEditMode) {
         await onSubmit(bienToEdit.id, dataToSend);
+        bienId = bienToEdit.id;
       } else {
-        await onSubmit(dataToSend);
+        const result = await onSubmit(dataToSend);
+        bienId = result.data.id;
       }
+
+      // Upload des photos si présentes
+      if (photos.length > 0 && bienId) {
+        try {
+          await photosAPI.upload(bienId, photos);
+        } catch (photoErr) {
+          console.error('Erreur upload photos:', photoErr);
+          // On continue même si l'upload des photos échoue
+        }
+      }
+
       onClose();
     } catch (err) {
       console.error('Erreur:', err);
@@ -433,7 +452,43 @@ function BienForm({ onClose, onSubmit, bienToEdit = null }) {
                   placeholder="380000"
                 />
               </div>
+            </div>
+          </div>
 
+          {/* Charges annuelles */}
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-4">Charges annuelles</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-200 mb-2">
+                  Assurance mensuelle (€/mois)
+                </label>
+                <input
+                  type="number"
+                  name="assuranceMensuelle"
+                  value={formData.assuranceMensuelle}
+                  onChange={handleChange}
+                  step="0.01"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+                  placeholder="45"
+                />
+                <p className="text-xs text-gray-500 mt-2">PNO, GLI, ou autre assurance liée au bien</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-200 mb-2">
+                  Taxe foncière annuelle (€/an)
+                </label>
+                <input
+                  type="number"
+                  name="taxeFonciere"
+                  value={formData.taxeFonciere}
+                  onChange={handleChange}
+                  step="0.01"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+                  placeholder="1200"
+                />
+                <p className="text-xs text-gray-500 mt-2">Montant annuel de la taxe foncière</p>
+              </div>
             </div>
           </div>
 

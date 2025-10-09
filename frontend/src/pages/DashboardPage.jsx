@@ -54,8 +54,24 @@ function DashboardPage({ onNavigate }) {
   const bienIdsFilters = new Set(biensFiltres.map(b => b.id));
   const pretsFiltres = categoryFilter === 'all' ? prets : prets.filter(p => bienIdsFilters.has(p.bienId));
 
+  // Fonction utilitaire pour calculer le nombre de mois entre deux dates
+  const calculerMoisEcoules = (dateDebut, dateFin) => {
+    const debut = new Date(dateDebut);
+    const fin = new Date(dateFin);
+    
+    let mois = (fin.getFullYear() - debut.getFullYear()) * 12;
+    mois += fin.getMonth() - debut.getMonth();
+    
+    // Ajuster si le jour du mois de fin est avant le jour du mois de début
+    if (fin.getDate() < debut.getDate()) {
+      mois--;
+    }
+    
+    return Math.max(0, mois);
+  };
+
   const capitalRestantDu = pretsFiltres.reduce((sum, p) => {
-    const moisEcoules = Math.floor((new Date() - new Date(p.dateDebut)) / (1000 * 60 * 60 * 24 * 30));
+    const moisEcoules = calculerMoisEcoules(new Date(p.dateDebut), new Date());
     const moisRestants = Math.max(0, parseInt(p.duree) - moisEcoules);
     const montant = parseFloat(p.montant || 0);
     const tauxMensuel = (parseFloat(p.taux || 0) / 100) / 12;
@@ -78,12 +94,22 @@ function DashboardPage({ onNavigate }) {
   const loyersMensuels = biensFiltres.reduce((sum, b) => sum + (b.loyerActuel || 0), 0);
   
   // Pour une SCI locative : on mesure le cash-flow (trésorerie réelle)
-  // Cash-flow = Loyers - Mensualités totales (capital + intérêts + assurance)
+  // Cash-flow = Loyers - Mensualités totales (capital + intérêts + assurance) - Assurances PNO - Taxe foncière
   const loyersAnnuels = loyersMensuels * 12;
   
   // Calculer les mensualités totales (tout ce qui sort du compte)
   const mensualitesPrets = pretsFiltres.reduce((sum, p) => sum + (parseFloat(p.mensualite) || 0), 0);
-  const chargesAnnuelles = mensualitesPrets * 12;
+  const chargesPrets = mensualitesPrets * 12;
+  
+  // Calculer les assurances mensuelles des biens
+  const assurancesMensuelles = biensFiltres.reduce((sum, b) => sum + (b.assuranceMensuelle || 0), 0);
+  const assurancesAnnuelles = assurancesMensuelles * 12;
+  
+  // Calculer les taxes foncières annuelles
+  const taxesFoncieres = biensFiltres.reduce((sum, b) => sum + (b.taxeFonciere || 0), 0);
+  
+  // Total des charges annuelles
+  const chargesAnnuelles = chargesPrets + assurancesAnnuelles + taxesFoncieres;
   
   const cashFlowAnnuel = loyersAnnuels - chargesAnnuelles;
   const prixAchatTotal = biensFiltres.reduce((sum, b) => sum + b.prixAchat, 0);
@@ -94,56 +120,77 @@ function DashboardPage({ onNavigate }) {
     const labels = [];
     const dataPoints = [];
     const endDate = new Date();
-    let startDate = new Date();
-    let stepDays = 1;
-    let maxPoints = 30;
+    let startDate;
+    let stepDays;
 
     // Définir la plage de temps en fonction du filtre
     switch(timeRange) {
       case '1J':
+        startDate = new Date();
         startDate.setDate(startDate.getDate() - 1);
-        stepDays = 1;
-        maxPoints = 24; // 24 heures
+        stepDays = 1; // 1 jour
         break;
       case '7J':
+        startDate = new Date();
         startDate.setDate(startDate.getDate() - 7);
-        stepDays = 1;
-        maxPoints = 7;
+        stepDays = 1; // 1 jour
         break;
       case '1M':
+        startDate = new Date();
         startDate.setMonth(startDate.getMonth() - 1);
-        stepDays = 1;
-        maxPoints = 30;
+        stepDays = 1; // 1 jour
         break;
       case 'YTD':
         startDate = new Date(endDate.getFullYear(), 0, 1);
-        stepDays = 7;
-        maxPoints = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24 * 7));
+        const totalDaysYTD = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+        stepDays = Math.max(1, Math.floor(totalDaysYTD / 52)); // Max 52 points
         break;
       case '1A':
+        startDate = new Date();
         startDate.setFullYear(startDate.getFullYear() - 1);
-        stepDays = 7;
-        maxPoints = 52;
+        stepDays = 7; // 1 semaine
         break;
       case 'TOUT':
       default:
-        // Utiliser la date du premier bien acheté ou une date par défaut
+        // Utiliser la date du premier bien acheté
         const premierBien = biensFiltres.length > 0 
           ? [...biensFiltres].sort((a, b) => new Date(a.dateAchat) - new Date(b.dateAchat))[0]
           : null;
-        startDate = premierBien ? new Date(premierBien.dateAchat) : new Date('2023-01-01');
-        const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-        stepDays = Math.max(7, Math.floor(totalDays / 50));
-        maxPoints = Math.ceil(totalDays / stepDays);
+        
+        if (premierBien) {
+          startDate = new Date(premierBien.dateAchat);
+        } else {
+          // Si pas de biens, montrer les 12 derniers mois
+          startDate = new Date();
+          startDate.setFullYear(startDate.getFullYear() - 1);
+        }
+        
+        const totalDaysTout = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+        
+        // Adapter le step selon la durée totale
+        if (totalDaysTout <= 30) {
+          stepDays = 1; // Tous les jours si moins d'un mois
+        } else if (totalDaysTout <= 90) {
+          stepDays = 2; // Tous les 2 jours si moins de 3 mois
+        } else if (totalDaysTout <= 365) {
+          stepDays = 7; // Toutes les semaines si moins d'un an
+        } else if (totalDaysTout <= 730) {
+          stepDays = 14; // Toutes les 2 semaines si moins de 2 ans
+        } else {
+          stepDays = 30; // Tous les mois si plus de 2 ans
+        }
         break;
     }
 
+    // Générer les points de données
     const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-    const step = Math.max(1, Math.floor(totalDays / maxPoints));
     
-    for (let i = 0; i <= totalDays; i += step) {
+    for (let i = 0; i <= totalDays; i += stepDays) {
       const date = new Date(startDate);
       date.setDate(date.getDate() + i);
+      
+      // Ne pas dépasser la date du jour
+      if (date > endDate) break;
       
       // Format de date selon la période
       let dateLabel;
@@ -151,23 +198,110 @@ function DashboardPage({ onNavigate }) {
         dateLabel = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       } else if (timeRange === '7J' || timeRange === '1M') {
         dateLabel = date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+      } else if (totalDays <= 365) {
+        dateLabel = date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
       } else {
         dateLabel = date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
       }
       labels.push(dateLabel);
       
-      // Calculer le patrimoine net à cette date
-      // Patrimoine net = Valeur des biens - Capital restant dû à cette date
-      // On simule le remboursement progressif du capital
-      const progress = Math.min(1, i / totalDays);
-      const valeurActuelle = viewType === 'brut' ? valeurTotaleBrute : valeurTotaleNette;
+      // Calculer le capital restant dû à cette date précise
+      // IMPORTANT : Ne compter que les prêts des biens déjà achetés à cette date
+      const capitalRestantDuADate = pretsFiltres.reduce((sum, p) => {
+        // Trouver le bien associé à ce prêt
+        const bienAssocie = biensFiltres.find(b => b.id === p.bienId);
+        
+        // Si pas de bien associé, ignorer ce prêt
+        if (!bienAssocie || !bienAssocie.dateAchat) {
+          return sum;
+        }
+        
+        // Vérifier si le bien a été acheté avant ou à cette date
+        const dateAchatBien = new Date(bienAssocie.dateAchat);
+        const dateAchatNormalisee = new Date(dateAchatBien.getFullYear(), dateAchatBien.getMonth(), dateAchatBien.getDate());
+        const datePointNormalisee = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        
+        // Si le bien n'a pas encore été acheté à cette date, ignorer le prêt
+        if (dateAchatNormalisee > datePointNormalisee) {
+          return sum;
+        }
+        
+        // Le bien a été acheté, calculer le capital restant dû
+        const dateDebutPret = new Date(p.dateDebut);
+        const moisEcoules = calculerMoisEcoules(dateDebutPret, date);
+        const moisRestants = Math.max(0, parseInt(p.duree) - moisEcoules);
+        const montant = parseFloat(p.montant || 0);
+        const tauxMensuel = (parseFloat(p.taux || 0) / 100) / 12;
+        
+        // Debug: Log pour le premier point et aujourd'hui
+        if (date.toDateString() === new Date('2025-04-16').toDateString() || 
+            date.toDateString() === new Date().toDateString()) {
+          console.log(`[DEBUG] Date: ${date.toLocaleDateString('fr-FR')}`);
+          console.log(`  Prêt: ${p.organisme}`);
+          console.log(`  Date début prêt: ${dateDebutPret.toLocaleDateString('fr-FR')}`);
+          console.log(`  Mois écoulés: ${moisEcoules}`);
+          console.log(`  Montant: ${montant} €`);
+          console.log(`  Taux mensuel: ${tauxMensuel}`);
+        }
+        
+        // Si le prêt n'a pas encore commencé, capital restant = montant total
+        if (date < dateDebutPret) {
+          return sum + montant;
+        }
+        
+        // Si le prêt est terminé, capital restant = 0
+        if (moisRestants <= 0) {
+          return sum + 0;
+        }
+        
+        if (tauxMensuel === 0) {
+          // Si pas de taux, capital restant = montant restant linéaire
+          return sum + (montant * moisRestants / parseInt(p.duree));
+        }
+        
+        const mensualite = montant * (tauxMensuel * Math.pow(1 + tauxMensuel, parseInt(p.duree))) / (Math.pow(1 + tauxMensuel, parseInt(p.duree)) - 1);
+        
+        // Formule du capital restant dû
+        const capitalRestant = mensualite * ((Math.pow(1 + tauxMensuel, moisRestants) - 1) / (tauxMensuel * Math.pow(1 + tauxMensuel, moisRestants)));
+        
+        // Debug: Log du capital restant calculé
+        if (date.toDateString() === new Date('2025-04-16').toDateString() || 
+            date.toDateString() === new Date().toDateString()) {
+          console.log(`  Mois restants: ${moisRestants}`);
+          console.log(`  Mensualité: ${mensualite.toFixed(2)} €`);
+          console.log(`  Capital restant dû: ${capitalRestant.toFixed(2)} €`);
+          console.log(`  Capital remboursé: ${(montant - capitalRestant).toFixed(2)} €`);
+        }
+        
+        return sum + (isNaN(capitalRestant) ? 0 : capitalRestant);
+      }, 0);
       
-      // Démarrer du coût d'acquisition et progresser vers la valeur actuelle nette
-      // La progression reflète le remboursement du capital
-      const debtInitiale = pretsFiltres.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
-      const patrimoineInitial = prixAchatTotal - debtInitiale; // Souvent négatif au début
+      // Calculer la valeur des biens achetés AVANT ou À cette date
+      const valeurBiensPossedes = biensFiltres.reduce((sum, bien) => {
+        if (!bien.dateAchat) return sum;
+        
+        const dateAchatBien = new Date(bien.dateAchat);
+        // Normaliser les dates en ignorant l'heure pour comparer uniquement les jours
+        const dateAchatNormalisee = new Date(dateAchatBien.getFullYear(), dateAchatBien.getMonth(), dateAchatBien.getDate());
+        const datePointNormalisee = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        
+        // Si le bien a été acheté avant ou à cette date, on compte sa valeur
+        if (dateAchatNormalisee <= datePointNormalisee) {
+          return sum + (bien.valeurActuelle || bien.prixAchat);
+        }
+        return sum;
+      }, 0);
       
-      const value = patrimoineInitial + ((valeurActuelle - patrimoineInitial) * progress);
+      // Calculer le patrimoine à cette date
+      let value;
+      if (viewType === 'brut') {
+        // Patrimoine brut = valeur des biens possédés à cette date
+        value = valeurBiensPossedes;
+      } else {
+        // Patrimoine net = valeur des biens possédés - capital restant dû à cette date
+        value = valeurBiensPossedes - capitalRestantDuADate;
+      }
+      
       dataPoints.push(Math.round(value));
     }
     
@@ -499,9 +633,18 @@ function DashboardPage({ onNavigate }) {
                   <span className="text-light-400">Loyers annuels</span>
                   <span className="text-accent-green font-semibold">+{loyersAnnuels.toLocaleString('fr-FR')} €</span>
                 </div>
+                <div className="h-px bg-dark-700 my-2"></div>
                 <div className="flex justify-between">
                   <span className="text-light-400">Mensualités de prêt</span>
-                  <span className="text-red-400 font-semibold">-{chargesAnnuelles.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</span>
+                  <span className="text-red-400 font-semibold">-{chargesPrets.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-light-400">Assurances (PNO, GLI...)</span>
+                  <span className="text-red-400 font-semibold">-{assurancesAnnuelles.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-light-400">Taxes foncières</span>
+                  <span className="text-red-400 font-semibold">-{taxesFoncieres.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</span>
                 </div>
                 <div className="h-px bg-dark-700 my-2"></div>
                 <div className="flex justify-between">

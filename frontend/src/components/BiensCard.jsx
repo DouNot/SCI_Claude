@@ -12,7 +12,7 @@ function BiensCard({ bien, onClick }) {
   };
 
   const Icon = typeIcons[bien.type] || Home;
-  const photoUrl = bien.photos?.find(p => p.estPrincipale)?.url || bien.photos?.[0]?.url;
+  const photoUrl = bien.photos?.find(p => p.isPrimary)?.url || bien.photos?.[0]?.url;
   const isLoue = bien.statut === 'LOUE' || (bien.bailActif && bien.bailActif.statut === 'ACTIF');
 
   return (
@@ -68,10 +68,21 @@ function BiensCard({ bien, onClick }) {
             <span className="text-xs text-light-500">€</span>
           </div>
           <div className="text-right">
-            <span className="text-xs text-light-500 block mb-1">Surface</span>
-            <span className="text-sm text-white font-semibold">
-              {bien.surface || '-'} m²
-            </span>
+            {isLoue && bien.loyerActuel ? (
+              <>
+                <span className="text-xs text-light-500 block mb-1">Loyer HC</span>
+                <span className="text-sm text-accent-green font-bold">
+                  {bien.loyerActuel.toLocaleString('fr-FR')} €
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-xs text-light-500 block mb-1">Surface</span>
+                <span className="text-sm text-white font-semibold">
+                  {bien.surface || '-'} m²
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>
