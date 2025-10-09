@@ -119,22 +119,15 @@ function BienDetailPage({ bienId, onNavigate }) {
   };
 
   const viewPretDetails = async (pret) => {
-    console.log('=== DÉBUT viewPretDetails (BienDetail) ===');
-    console.log('Prêt sélectionné:', pret);
     try {
       setLoadingDetails(true);
-      console.log('Appel API pour le prêt ID:', pret.id);
       const response = await pretsAPI.getById(pret.id);
-      console.log('Détails du prêt reçus:', response.data);
-      console.log('Amortissement:', response.data.amortissement);
       setPretDetails(response.data);
     } catch (err) {
       console.error('Erreur:', err);
-      console.error('Stack trace:', err.stack);
       alert('Impossible de charger les détails du prêt');
       setLoadingDetails(false);
     } finally {
-      console.log('=== FIN viewPretDetails ===');
       setLoadingDetails(false);
     }
   };

@@ -233,17 +233,6 @@ function DashboardPage({ onNavigate }) {
         const montant = parseFloat(p.montant || 0);
         const tauxMensuel = (parseFloat(p.taux || 0) / 100) / 12;
         
-        // Debug: Log pour le premier point et aujourd'hui
-        if (date.toDateString() === new Date('2025-04-16').toDateString() || 
-            date.toDateString() === new Date().toDateString()) {
-          console.log(`[DEBUG] Date: ${date.toLocaleDateString('fr-FR')}`);
-          console.log(`  Prêt: ${p.organisme}`);
-          console.log(`  Date début prêt: ${dateDebutPret.toLocaleDateString('fr-FR')}`);
-          console.log(`  Mois écoulés: ${moisEcoules}`);
-          console.log(`  Montant: ${montant} €`);
-          console.log(`  Taux mensuel: ${tauxMensuel}`);
-        }
-        
         // Si le prêt n'a pas encore commencé, capital restant = montant total
         if (date < dateDebutPret) {
           return sum + montant;
@@ -263,15 +252,6 @@ function DashboardPage({ onNavigate }) {
         
         // Formule du capital restant dû
         const capitalRestant = mensualite * ((Math.pow(1 + tauxMensuel, moisRestants) - 1) / (tauxMensuel * Math.pow(1 + tauxMensuel, moisRestants)));
-        
-        // Debug: Log du capital restant calculé
-        if (date.toDateString() === new Date('2025-04-16').toDateString() || 
-            date.toDateString() === new Date().toDateString()) {
-          console.log(`  Mois restants: ${moisRestants}`);
-          console.log(`  Mensualité: ${mensualite.toFixed(2)} €`);
-          console.log(`  Capital restant dû: ${capitalRestant.toFixed(2)} €`);
-          console.log(`  Capital remboursé: ${(montant - capitalRestant).toFixed(2)} €`);
-        }
         
         return sum + (isNaN(capitalRestant) ? 0 : capitalRestant);
       }, 0);

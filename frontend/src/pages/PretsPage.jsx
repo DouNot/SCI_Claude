@@ -70,22 +70,15 @@ function PretsPage() {
   };
 
   const viewPretDetails = async (pret) => {
-    console.log('=== DÉBUT viewPretDetails ===');
-    console.log('Prêt sélectionné:', pret);
     try {
       setLoadingDetails(true);
-      console.log('Appel API pour le prêt ID:', pret.id);
       const response = await pretsAPI.getById(pret.id);
-      console.log('Détails du prêt reçus:', response.data);
-      console.log('Amortissement:', response.data.amortissement);
       setPretDetails(response.data);
     } catch (err) {
-      console.error('Erreur lors du chargement:', err);
-      console.error('Stack trace:', err.stack);
+      console.error('Erreur:', err);
       alert('Impossible de charger les détails du prêt');
       setLoadingDetails(false);
     } finally {
-      console.log('=== FIN viewPretDetails ===');
       setLoadingDetails(false);
     }
   };
