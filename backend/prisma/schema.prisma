@@ -31,6 +31,7 @@ model Compte {
   biens       Bien[]
   contacts    Contact[]
   assembleesGenerales AssembleeGenerale[]
+  notifications Notification[]
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -78,6 +79,7 @@ model Bien {
   prets          Pret[]
   travaux        Travaux[]
   evenementsFiscaux EvenementFiscal[]
+  charges        Charge[]
 }
 
 model Photo {
@@ -167,6 +169,7 @@ model Bail {
 
 model Quittance {
   id             String    @id @default(uuid())
+  numeroQuittance String?  @unique
   mois           Int
   annee          Int
   montantLoyer   Float
@@ -177,6 +180,8 @@ model Quittance {
   createdAt      DateTime  @default(now())
   bailId         String
   bail           Bail      @relation(fields: [bailId], references: [id], onDelete: Cascade)
+
+  @@index([numeroQuittance])
 }
 
 model Facture {
@@ -265,4 +270,48 @@ model EvenementFiscal {
   updatedAt     DateTime  @updatedAt
   bienId        String
   bien          Bien      @relation(fields: [bienId], references: [id], onDelete: Cascade)
+}
+
+model Charge {
+  id          String    @id @default(uuid())
+  type        String    // COPROPRIETE, ASSURANCE_PNO, ASSURANCE_GLI, TAXE_FONCIERE, ENTRETIEN, GESTION_LOCATIVE, AUTRE
+  libelle     String    // Description de la charge
+  montant     Float     // Montant de la charge
+  frequence   String    // MENSUELLE, TRIMESTRIELLE, SEMESTRIELLE, ANNUELLE, PONCTUELLE
+  dateDebut   DateTime  // Date de début de la charge
+  dateFin     DateTime? // Date de fin (optionnelle pour charges récurrentes)
+  jourPaiement Int?     // Jour du mois pour le paiement (1-31) - utile pour charges mensuelles
+  estActive   Boolean   @default(true) // Si la charge est active ou non
+  notes       String?   // Notes supplémentaires
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  bienId      String?
+  bien        Bien?     @relation(fields: [bienId], references: [id], onDelete: Cascade)
+  paiements   PaiementCharge[] // Historique des paiements
+}
+
+model PaiementCharge {
+  id            String    @id @default(uuid())
+  datePaiement  DateTime  // Date du paiement
+  montant       Float     // Montant payé
+  notes         String?   // Notes (numéro de transaction, etc.)
+  createdAt     DateTime  @default(now())
+  chargeId      String
+  charge        Charge    @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id          String    @id @default(uuid())
+  type        String    // LOYER, CHARGE, BAIL, FISCAL, TRAVAUX, AUTRE
+  titre       String    // Titre de la notification
+  message     String    // Message détaillé
+  priorite    String    @default("NORMALE") // BASSE, NORMALE, HAUTE, URGENTE
+  statut      String    @default("NON_LUE") // NON_LUE, LUE
+  dateEcheance DateTime? // Date d'échéance concernée (optionnelle)
+  lienType    String?   // Type d'entité liée (Bien, Bail, Charge, etc.)
+  lienId      String?   // ID de l'entité liée
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  compteId    String
+  compte      Compte    @relation(fields: [compteId], references: [id], onDelete: Cascade)
 }

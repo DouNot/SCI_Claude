@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { LayoutDashboard, Home, Users, UserCircle, FolderOpen, ChevronDown, Settings, UsersRound, LogOut } from 'lucide-react';
+import { LayoutDashboard, Home, Users, UserCircle, FolderOpen, ChevronDown, Settings, UsersRound, LogOut, DollarSign } from 'lucide-react';
+import NotificationBell from './NotificationBell';
 
 function Sidebar({ currentPage, onNavigate }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -8,6 +9,7 @@ function Sidebar({ currentPage, onNavigate }) {
     { id: 'dashboard', label: 'Synthèse', icon: LayoutDashboard },
     { id: 'biens', label: 'Patrimoine', icon: Home },
     { id: 'locataires', label: 'Locataires', icon: Users },
+    { id: 'charges', label: 'Charges', icon: DollarSign },
     { id: 'contacts', label: 'Contacts', icon: UserCircle },
     { id: 'documents', label: 'Documents', icon: FolderOpen },
   ];
@@ -16,14 +18,17 @@ function Sidebar({ currentPage, onNavigate }) {
     <div className="w-72 bg-slate-900 border-r border-slate-700 flex flex-col h-full shadow-xl">
       {/* Logo */}
       <div className="p-6 border-b border-slate-700">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-            <Home className="h-6 w-6 text-white" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <Home className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">Je sais app</h1>
+              <p className="text-xs text-slate-400">Gestion SCI</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-white">Je sais app</h1>
-            <p className="text-xs text-slate-400">Gestion SCI</p>
-          </div>
+          <NotificationBell />
         </div>
       </div>
 

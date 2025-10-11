@@ -26,6 +26,9 @@ const associeRoutes = require('./src/routes/associeRoutes');
 const documentRoutes = require('./src/routes/documentRoutes');
 const evenementFiscalRoutes = require('./src/routes/evenementFiscalRoutes');
 const photoRoutes = require('./src/routes/photoRoutes');
+const chargeRoutes = require('./src/routes/chargeRoutes');
+const notificationRoutes = require('./src/routes/notificationRoutes');
+const exportRoutes = require('./src/routes/exportRoutes');
 
 const agRoutes = require('./src/routes/agRoutes');
 
@@ -42,6 +45,9 @@ app.use('/api/associes', associeRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/evenements-fiscaux', evenementFiscalRoutes);
 app.use('/api/photos', photoRoutes);
+app.use('/api/charges', chargeRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/exports', exportRoutes);
 app.use('/api/assemblees-generales', agRoutes);
 
 // Middleware de gestion des erreurs

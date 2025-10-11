@@ -133,7 +133,71 @@ exports.createBien = asyncHandler(async (req, res) => {
   }
 
   // Ajouter le compteId par défaut (prépare V2)
-  dataToCreate.compteId = process.env.DEFAULT_COMPTE_ID;
+  // Vérifier si le compte existe, sinon en créer un
+  let compteId = process.env.DEFAULT_COMPTE_ID;
+  
+  if (!compteId) {
+    // Chercher un compte existant
+    const compteExistant = await prisma.compte.findFirst();
+    if (compteExistant) {
+      compteId = compteExistant.id;
+    } else {
+      // Créer un utilisateur et un compte par défaut
+      const user = await prisma.user.create({
+        data: {
+          email: 'admin@sci.fr',
+          password: 'admin123',
+          nom: 'Administrateur',
+          prenom: 'SCI',
+          role: 'ADMIN',
+        },
+      });
+      
+      const compte = await prisma.compte.create({
+        data: {
+          nom: 'Ma SCI',
+          type: 'SCI',
+          description: 'Compte principal de la SCI',
+          userId: user.id,
+        },
+      });
+      
+      compteId = compte.id;
+    }
+  } else {
+    // Vérifier que le compte existe
+    const compte = await prisma.compte.findUnique({ where: { id: compteId } });
+    if (!compte) {
+      // Le compte dans .env n'existe pas, chercher ou créer un autre
+      const compteExistant = await prisma.compte.findFirst();
+      if (compteExistant) {
+        compteId = compteExistant.id;
+      } else {
+        const user = await prisma.user.create({
+          data: {
+            email: 'admin@sci.fr',
+            password: 'admin123',
+            nom: 'Administrateur',
+            prenom: 'SCI',
+            role: 'ADMIN',
+          },
+        });
+        
+        const nouveauCompte = await prisma.compte.create({
+          data: {
+            nom: 'Ma SCI',
+            type: 'SCI',
+            description: 'Compte principal de la SCI',
+            userId: user.id,
+          },
+        });
+        
+        compteId = nouveauCompte.id;
+      }
+    }
+  }
+  
+  dataToCreate.compteId = compteId;
   
   // Le statut sera toujours LIBRE à la création (pas de bail)
   dataToCreate.statut = 'LIBRE';
@@ -144,6 +208,37 @@ exports.createBien = asyncHandler(async (req, res) => {
       compte: true,
     },
   });
+
+  // Créer automatiquement les charges si assuranceMensuelle ou taxeFonciere sont renseignées
+  if (bien.assuranceMensuelle && bien.assuranceMensuelle > 0) {
+    await prisma.charge.create({
+      data: {
+        type: 'ASSURANCE_PNO',
+        libelle: 'Assurance PNO',
+        montant: bien.assuranceMensuelle,
+        frequence: 'MENSUELLE',
+        dateDebut: bien.dateAchat,
+        estActive: true,
+        bienId: bien.id,
+        notes: 'Synchronisé automatiquement depuis les détails du bien',
+      },
+    });
+  }
+
+  if (bien.taxeFonciere && bien.taxeFonciere > 0) {
+    await prisma.charge.create({
+      data: {
+        type: 'TAXE_FONCIERE',
+        libelle: 'Taxe foncière',
+        montant: bien.taxeFonciere,
+        frequence: 'ANNUELLE',
+        dateDebut: bien.dateAchat,
+        estActive: true,
+        bienId: bien.id,
+        notes: 'Synchronisé automatiquement depuis les détails du bien',
+      },
+    });
+  }
 
   res.status(201).json({
     success: true,
@@ -208,6 +303,86 @@ exports.updateBien = asyncHandler(async (req, res) => {
       photos: true,
     },
   });
+
+  // Synchroniser les charges avec les champs assuranceMensuelle et taxeFonciere
+  // Chercher les charges existantes de type ASSURANCE_PNO et TAXE_FONCIERE pour ce bien
+  const chargesExistantes = await prisma.charge.findMany({
+    where: {
+      bienId: id,
+      type: { in: ['ASSURANCE_PNO', 'TAXE_FONCIERE'] },
+    },
+  });
+
+  const chargeAssurance = chargesExistantes.find(c => c.type === 'ASSURANCE_PNO');
+  const chargeTaxe = chargesExistantes.find(c => c.type === 'TAXE_FONCIERE');
+
+  // Synchroniser l'assurance PNO
+  if (bien.assuranceMensuelle && bien.assuranceMensuelle > 0) {
+    if (chargeAssurance) {
+      // Mettre à jour la charge existante
+      await prisma.charge.update({
+        where: { id: chargeAssurance.id },
+        data: {
+          montant: bien.assuranceMensuelle,
+          estActive: true,
+        },
+      });
+    } else {
+      // Créer une nouvelle charge
+      await prisma.charge.create({
+        data: {
+          type: 'ASSURANCE_PNO',
+          libelle: 'Assurance PNO',
+          montant: bien.assuranceMensuelle,
+          frequence: 'MENSUELLE',
+          dateDebut: bien.dateAchat,
+          estActive: true,
+          bienId: bien.id,
+          notes: 'Synchronisé automatiquement depuis les détails du bien',
+        },
+      });
+    }
+  } else if (chargeAssurance) {
+    // Désactiver la charge si le champ est vidé
+    await prisma.charge.update({
+      where: { id: chargeAssurance.id },
+      data: { estActive: false },
+    });
+  }
+
+  // Synchroniser la taxe foncière
+  if (bien.taxeFonciere && bien.taxeFonciere > 0) {
+    if (chargeTaxe) {
+      // Mettre à jour la charge existante
+      await prisma.charge.update({
+        where: { id: chargeTaxe.id },
+        data: {
+          montant: bien.taxeFonciere,
+          estActive: true,
+        },
+      });
+    } else {
+      // Créer une nouvelle charge
+      await prisma.charge.create({
+        data: {
+          type: 'TAXE_FONCIERE',
+          libelle: 'Taxe foncière',
+          montant: bien.taxeFonciere,
+          frequence: 'ANNUELLE',
+          dateDebut: bien.dateAchat,
+          estActive: true,
+          bienId: bien.id,
+          notes: 'Synchronisé automatiquement depuis les détails du bien',
+        },
+      });
+    }
+  } else if (chargeTaxe) {
+    // Désactiver la charge si le champ est vidé
+    await prisma.charge.update({
+      where: { id: chargeTaxe.id },
+      data: { estActive: false },
+    });
+  }
 
   res.status(200).json({
     success: true,

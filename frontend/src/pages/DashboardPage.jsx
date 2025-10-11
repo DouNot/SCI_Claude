@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { biensAPI, bauxAPI, evenementsFiscauxAPI, pretsAPI } from '../services/api';
-import { TrendingUp, Home, AlertCircle, Euro, ArrowUpRight, ChevronDown } from 'lucide-react';
+import { biensAPI, bauxAPI, evenementsFiscauxAPI, pretsAPI, chargesAPI } from '../services/api';
+import { TrendingUp, Home, AlertCircle, Euro, ArrowUpRight, ChevronDown, Download } from 'lucide-react';
 import { Line, Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
 
@@ -11,6 +11,7 @@ function DashboardPage({ onNavigate }) {
   const [baux, setBaux] = useState([]);
   const [evenements, setEvenements] = useState([]);
   const [prets, setPrets] = useState([]);
+  const [charges, setCharges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('TOUT');
   const [viewType, setViewType] = useState('brut');
@@ -24,16 +25,18 @@ function DashboardPage({ onNavigate }) {
   const loadAllData = async () => {
     try {
       setLoading(true);
-      const [biensRes, bauxRes, evenementsRes, pretsRes] = await Promise.all([
+      const [biensRes, bauxRes, evenementsRes, pretsRes, chargesRes] = await Promise.all([
         biensAPI.getAll(),
         bauxAPI.getAll(),
         evenementsFiscauxAPI.getAll(),
-        pretsAPI.getAll()
+        pretsAPI.getAll(),
+        chargesAPI.getAll()
       ]);
       setBiens(biensRes.data);
       setBaux(bauxRes.data);
       setEvenements(evenementsRes.data);
       setPrets(pretsRes.data);
+      setCharges(chargesRes.data);
     } catch (err) {
       console.error('Erreur:', err);
     } finally {
@@ -53,6 +56,11 @@ function DashboardPage({ onNavigate }) {
   // Filtrer les prêts des biens filtrés
   const bienIdsFilters = new Set(biensFiltres.map(b => b.id));
   const pretsFiltres = categoryFilter === 'all' ? prets : prets.filter(p => bienIdsFilters.has(p.bienId));
+  
+  // Filtrer les charges des biens filtrés (uniquement les charges actives)
+  const chargesFiltrees = categoryFilter === 'all' 
+    ? charges.filter(c => c.estActive) 
+    : charges.filter(c => c.estActive && bienIdsFilters.has(c.bienId));
 
   // Fonction utilitaire pour calculer le nombre de mois entre deux dates
   const calculerMoisEcoules = (dateDebut, dateFin) => {
@@ -101,15 +109,37 @@ function DashboardPage({ onNavigate }) {
   const mensualitesPrets = pretsFiltres.reduce((sum, p) => sum + (parseFloat(p.mensualite) || 0), 0);
   const chargesPrets = mensualitesPrets * 12;
   
-  // Calculer les assurances mensuelles des biens
-  const assurancesMensuelles = biensFiltres.reduce((sum, b) => sum + (b.assuranceMensuelle || 0), 0);
-  const assurancesAnnuelles = assurancesMensuelles * 12;
+  // Calculer les charges annuelles à partir des charges (et non plus des champs du bien)
+  const calculerChargesAnnuelles = () => {
+    return chargesFiltrees.reduce((sum, charge) => {
+      let montantAnnuel = 0;
+      switch (charge.frequence) {
+        case 'MENSUELLE':
+          montantAnnuel = charge.montant * 12;
+          break;
+        case 'TRIMESTRIELLE':
+          montantAnnuel = charge.montant * 4;
+          break;
+        case 'SEMESTRIELLE':
+          montantAnnuel = charge.montant * 2;
+          break;
+        case 'ANNUELLE':
+          montantAnnuel = charge.montant;
+          break;
+        case 'PONCTUELLE':
+          montantAnnuel = 0; // On ne compte pas les charges ponctuelles dans le calcul annuel
+          break;
+        default:
+          montantAnnuel = 0;
+      }
+      return sum + montantAnnuel;
+    }, 0);
+  };
   
-  // Calculer les taxes foncières annuelles
-  const taxesFoncieres = biensFiltres.reduce((sum, b) => sum + (b.taxeFonciere || 0), 0);
+  const autresChargesAnnuelles = calculerChargesAnnuelles();
   
   // Total des charges annuelles
-  const chargesAnnuelles = chargesPrets + assurancesAnnuelles + taxesFoncieres;
+  const chargesAnnuelles = chargesPrets + autresChargesAnnuelles;
   
   const cashFlowAnnuel = loyersAnnuels - chargesAnnuelles;
   const prixAchatTotal = biensFiltres.reduce((sum, b) => sum + b.prixAchat, 0);
@@ -492,6 +522,24 @@ function DashboardPage({ onNavigate }) {
               <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-light-200 bg-clip-text text-transparent">
                 Patrimoine
               </h1>
+              <a
+                href="http://localhost:3000/api/exports/dashboard/excel"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 bg-accent-green/10 hover:bg-accent-green/20 text-accent-green rounded-xl text-sm font-semibold transition-all border border-accent-green/30"
+              >
+                <Download className="h-4 w-4" />
+                Excel
+              </a>
+              <a
+                href="http://localhost:3000/api/exports/dashboard/pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl text-sm font-semibold transition-all border border-red-500/30"
+              >
+                <Download className="h-4 w-4" />
+                PDF
+              </a>
               <div className="flex gap-2 bg-dark-900 rounded-2xl p-2 border border-dark-600/30">
                 <button
                   onClick={() => setViewType('brut')}
@@ -619,12 +667,8 @@ function DashboardPage({ onNavigate }) {
                   <span className="text-red-400 font-semibold">-{chargesPrets.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-light-400">Assurances (PNO, GLI...)</span>
-                  <span className="text-red-400 font-semibold">-{assurancesAnnuelles.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-light-400">Taxes foncières</span>
-                  <span className="text-red-400 font-semibold">-{taxesFoncieres.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</span>
+                  <span className="text-light-400">Autres charges (assurances, taxes...)</span>
+                  <span className="text-red-400 font-semibold">-{autresChargesAnnuelles.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</span>
                 </div>
                 <div className="h-px bg-dark-700 my-2"></div>
                 <div className="flex justify-between">

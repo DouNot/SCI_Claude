@@ -361,4 +361,75 @@ export const assembleesAPI = {
   },
 };
 
+export const chargesAPI = {
+  getAll: async () => {
+    const response = await api.get('/charges');
+    return response.data;
+  },
+  getByBien: async (bienId) => {
+    const response = await api.get(`/charges/bien/${bienId}`);
+    return response.data;
+  },
+  getById: async (id) => {
+    const response = await api.get(`/charges/${id}`);
+    return response.data;
+  },
+  create: async (chargeData) => {
+    const response = await api.post('/charges', chargeData);
+    return response.data;
+  },
+  update: async (id, chargeData) => {
+    const response = await api.put(`/charges/${id}`, chargeData);
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`/charges/${id}`);
+    return response.data;
+  },
+  addPaiement: async (id, paiementData) => {
+    const response = await api.post(`/charges/${id}/paiements`, paiementData);
+    return response.data;
+  },
+  deletePaiement: async (paiementId) => {
+    const response = await api.delete(`/charges/paiements/${paiementId}`);
+    return response.data;
+  },
+};
+
+export const notificationsAPI = {
+  getAll: async (statut = null) => {
+    const params = statut ? { statut } : {};
+    const response = await api.get('/notifications', { params });
+    return response.data;
+  },
+  getById: async (id) => {
+    const response = await api.get(`/notifications/${id}`);
+    return response.data;
+  },
+  create: async (notificationData) => {
+    const response = await api.post('/notifications', notificationData);
+    return response.data;
+  },
+  marquerCommeLue: async (id) => {
+    const response = await api.put(`/notifications/${id}/lire`);
+    return response.data;
+  },
+  marquerToutesCommeLues: async () => {
+    const response = await api.put('/notifications/lire-toutes');
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`/notifications/${id}`);
+    return response.data;
+  },
+  supprimerToutesLues: async () => {
+    const response = await api.delete('/notifications/lues/toutes');
+    return response.data;
+  },
+  generer: async () => {
+    const response = await api.post('/notifications/generer');
+    return response.data;
+  },
+};
+
 export default api;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { biensAPI, bauxAPI, facturesAPI, travauxAPI, documentsAPI, pretsAPI, evenementsFiscauxAPI, locatairesAPI } from '../services/api';
-import { ArrowLeft, Edit, MapPin, Home, Calendar, Euro, FileText, Wrench, Users, TrendingUp, Plus, Trash2, Pencil, Eye, X } from 'lucide-react';
+import { ArrowLeft, Edit, MapPin, Home, Calendar, Euro, FileText, Wrench, Users, TrendingUp, Plus, Trash2, Pencil, Eye, X, Download } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import PretForm from '../components/PretForm';
 import TravauxForm from '../components/TravauxForm';
@@ -226,6 +226,16 @@ function BienDetailPage({ bienId, onNavigate }) {
             </button>
 
             <div className="flex gap-3">
+              <a
+                href={`http://localhost:3000/api/exports/bien/${bienId}/bilan`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-6 py-3 bg-accent-green/10 hover:bg-accent-green/20 rounded-2xl border border-accent-green/30 transition shadow-card"
+              >
+                <Download className="h-4 w-4 text-accent-green" />
+                <span className="font-semibold text-accent-green">Bilan PDF</span>
+              </a>
+              
               <button 
                 onClick={() => setShowBienForm(true)}
                 className="flex items-center gap-2 px-6 py-3 bg-dark-900 hover:bg-dark-800 rounded-2xl border border-dark-600/30 transition shadow-card"

@@ -8,6 +8,7 @@ import ContactsPage from './pages/ContactsPage';
 import DocumentsPage from './pages/DocumentsPage';
 import AssociesPage from './pages/AssociesPage';
 import ParametresPage from './pages/ParametresPage';
+import ChargesPage from './pages/ChargesPage';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -29,6 +30,7 @@ function App() {
         {currentPage === 'biens' && <BiensPage onNavigate={handleNavigate} />}
         {currentPage === 'bien-detail' && <BienDetailPage bienId={selectedBienId} onNavigate={handleNavigate} />}
         {currentPage === 'locataires' && <LocatairesPage onNavigate={handleNavigate} />}
+        {currentPage === 'charges' && <ChargesPage />}
         {currentPage === 'contacts' && <ContactsPage />}
         {currentPage === 'documents' && <DocumentsPage />}
         {currentPage === 'associes' && <AssociesPage />}

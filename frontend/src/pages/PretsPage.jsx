@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { pretsAPI, biensAPI } from '../services/api';
-import { DollarSign, Building2, Edit, Trash2, Calendar, Eye, X } from 'lucide-react';
+import { DollarSign, Building2, Edit, Trash2, Calendar, Eye, X, Download } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import PretForm from '../components/PretForm';
 
@@ -439,10 +439,21 @@ function PretsPage() {
             </div>
 
             {/* Footer */}
-            <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4">
+            <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex gap-3">
+              {pretDetails && (
+                <a
+                  href={`http://localhost:3000/api/exports/pret/${pretDetails.id}/amortissement`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold"
+                >
+                  <Download className="h-5 w-5" />
+                  Télécharger PDF
+                </a>
+              )}
               <button
                 onClick={() => { setPretDetails(null); setLoadingDetails(false); }}
-                className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
+                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
               >
                 Fermer
               </button>
