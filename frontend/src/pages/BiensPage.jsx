@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { biensAPI } from '../services/api';
 import { Plus, LayoutGrid, List, Search, Home, Edit, Trash2 } from 'lucide-react';
 import BiensCard from '../components/BiensCard';
@@ -6,7 +7,8 @@ import BiensTable from '../components/BiensTable';
 import BienForm from '../components/BienForm';
 import Loader from '../components/Loader';
 
-function BiensPage({ onNavigate }) {
+function BiensPage() {
+  const navigate = useNavigate();
   const [biens, setBiens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('grid');
@@ -75,9 +77,7 @@ function BiensPage({ onNavigate }) {
   };
 
   const handleBienClick = (bien) => {
-    if (onNavigate) {
-      onNavigate('bien-detail', bien.id);
-    }
+    navigate(`/biens/${bien.id}`);
   };
 
   const filteredBiens = biens.filter(bien => {

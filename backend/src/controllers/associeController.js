@@ -6,17 +6,26 @@ const asyncHandler = require('../utils/asyncHandler');
 // @access  Public
 exports.getAllAssocies = asyncHandler(async (req, res) => {
   const associes = await prisma.associe.findMany({
+    where: { statut: 'ACTIF' },
     include: {
-      compte: {
+      space: {
         select: {
           id: true,
           nom: true,
           type: true,
         },
       },
+      user: {
+        select: {
+          id: true,
+          email: true,
+          nom: true,
+          prenom: true,
+        }
+      }
     },
     orderBy: {
-      pourcentageParts: 'desc',
+      pourcentage: 'desc',
     },
   });
 
@@ -27,22 +36,39 @@ exports.getAllAssocies = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Récupérer les associés d'un compte
-// @route   GET /api/associes/compte/:compteId
+// @desc    Récupérer les associés d'un space
+// @route   GET /api/associes/space/:spaceId
 // @access  Public
-exports.getAssociesByCompte = asyncHandler(async (req, res) => {
-  const { compteId } = req.params;
+exports.getAssociesBySpace = asyncHandler(async (req, res) => {
+  const { spaceId } = req.params;
 
   const associes = await prisma.associe.findMany({
-    where: { compteId },
+    where: { 
+      spaceId,
+      statut: 'ACTIF'
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          nom: true,
+          prenom: true,
+        }
+      }
+    },
     orderBy: {
-      pourcentageParts: 'desc',
+      pourcentage: 'desc',
     },
   });
+
+  // Calculer le total des parts
+  const totalPourcentage = associes.reduce((sum, a) => sum + parseFloat(a.pourcentage), 0);
 
   res.status(200).json({
     success: true,
     count: associes.length,
+    totalPourcentage,
     data: associes,
   });
 });
@@ -56,7 +82,15 @@ exports.getAssocieById = asyncHandler(async (req, res) => {
   const associe = await prisma.associe.findUnique({
     where: { id },
     include: {
-      compte: true,
+      space: true,
+      user: {
+        select: {
+          id: true,
+          email: true,
+          nom: true,
+          prenom: true,
+        }
+      }
     },
   });
 
@@ -80,50 +114,102 @@ exports.createAssocie = asyncHandler(async (req, res) => {
   const data = req.body;
 
   // Validation basique
-  if (!data.nom || !data.prenom || !data.pourcentageParts) {
+  if (!data.nom || !data.prenom || !data.nombreParts) {
     return res.status(400).json({
       success: false,
-      error: 'Champs requis manquants (nom, prenom, pourcentageParts)',
+      error: 'Champs requis manquants (nom, prenom, nombreParts)',
     });
   }
 
   // Nettoyer les données
   const dataToCreate = { ...data };
 
-  // Ajouter le compteId par défaut (prépare V2)
-  dataToCreate.compteId = process.env.DEFAULT_COMPTE_ID;
+  // Trouver un Space par défaut si non fourni
+  if (!dataToCreate.spaceId) {
+    const spaceExistant = await prisma.space.findFirst({
+      where: { type: 'SCI' }
+    });
+    
+    if (!spaceExistant) {
+      return res.status(400).json({
+        success: false,
+        error: 'Aucun Space SCI trouvé. Créez d\'abord une SCI.'
+      });
+    }
+    
+    dataToCreate.spaceId = spaceExistant.id;
+  }
 
-  // Convertir pourcentageParts en nombre
-  dataToCreate.pourcentageParts = parseFloat(dataToCreate.pourcentageParts);
+  // Convertir en nombres
+  dataToCreate.nombreParts = parseInt(dataToCreate.nombreParts);
+  
+  // Récupérer le Space pour calculer le pourcentage
+  const space = await prisma.space.findUnique({
+    where: { id: dataToCreate.spaceId }
+  });
+
+  if (!space.capitalSocial) {
+    return res.status(400).json({
+      success: false,
+      error: 'Le capital social de la SCI doit être défini'
+    });
+  }
+
+  // Calculer le pourcentage
+  dataToCreate.pourcentage = (dataToCreate.nombreParts / space.capitalSocial) * 100;
 
   // Champs optionnels
   if (dataToCreate.email === '') dataToCreate.email = null;
   if (dataToCreate.telephone === '') dataToCreate.telephone = null;
+  if (dataToCreate.valeurNominale) dataToCreate.valeurNominale = parseFloat(dataToCreate.valeurNominale);
+  if (dataToCreate.soldeCCA) dataToCreate.soldeCCA = parseFloat(dataToCreate.soldeCCA);
 
-  // Vérifier que le total des parts ne dépasse pas 100%
+  // Date d'entrée par défaut
+  if (!dataToCreate.dateEntree) {
+    dataToCreate.dateEntree = new Date();
+  } else {
+    dataToCreate.dateEntree = new Date(dataToCreate.dateEntree);
+  }
+
+  // Statut par défaut
+  dataToCreate.statut = 'ACTIF';
+
+  // Vérifier que le total des parts ne dépasse pas le capital social
   const associesExistants = await prisma.associe.findMany({
-    where: { compteId: dataToCreate.compteId },
+    where: { 
+      spaceId: dataToCreate.spaceId,
+      statut: 'ACTIF'
+    },
   });
 
-  const totalParts = associesExistants.reduce((sum, a) => sum + a.pourcentageParts, 0);
-  const nouveauTotal = totalParts + dataToCreate.pourcentageParts;
+  const totalParts = associesExistants.reduce((sum, a) => sum + a.nombreParts, 0);
+  const nouveauTotal = totalParts + dataToCreate.nombreParts;
 
-  if (nouveauTotal > 100) {
+  if (nouveauTotal > space.capitalSocial) {
     return res.status(400).json({
       success: false,
-      error: `Le total des parts dépasserait 100% (actuellement ${totalParts}%, vous tentez d'ajouter ${dataToCreate.pourcentageParts}%)`,
+      error: `Le total des parts dépasserait le capital social (${space.capitalSocial}) - Actuellement: ${totalParts}, vous tentez d'ajouter: ${dataToCreate.nombreParts}`,
     });
   }
 
   const associe = await prisma.associe.create({
     data: dataToCreate,
     include: {
-      compte: true,
+      space: true,
+      user: {
+        select: {
+          id: true,
+          email: true,
+          nom: true,
+          prenom: true,
+        }
+      }
     },
   });
 
   res.status(201).json({
     success: true,
+    message: 'Associé créé avec succès',
     data: associe,
   });
 });
@@ -137,6 +223,9 @@ exports.updateAssocie = asyncHandler(async (req, res) => {
 
   const associeExistant = await prisma.associe.findUnique({
     where: { id },
+    include: {
+      space: true
+    }
   });
 
   if (!associeExistant) {
@@ -148,25 +237,29 @@ exports.updateAssocie = asyncHandler(async (req, res) => {
 
   const dataToUpdate = { ...data };
 
-  // Convertir pourcentageParts en nombre si présent
-  if (dataToUpdate.pourcentageParts) {
-    dataToUpdate.pourcentageParts = parseFloat(dataToUpdate.pourcentageParts);
+  // Convertir nombreParts si présent
+  if (dataToUpdate.nombreParts) {
+    dataToUpdate.nombreParts = parseInt(dataToUpdate.nombreParts);
 
-    // Vérifier que le total des parts ne dépasse pas 100%
+    // Recalculer le pourcentage
+    dataToUpdate.pourcentage = (dataToUpdate.nombreParts / associeExistant.space.capitalSocial) * 100;
+
+    // Vérifier que le total des parts ne dépasse pas le capital social
     const associesExistants = await prisma.associe.findMany({
       where: { 
-        compteId: associeExistant.compteId,
+        spaceId: associeExistant.spaceId,
+        statut: 'ACTIF',
         id: { not: id } // Exclure l'associé en cours de modification
       },
     });
 
-    const totalParts = associesExistants.reduce((sum, a) => sum + a.pourcentageParts, 0);
-    const nouveauTotal = totalParts + dataToUpdate.pourcentageParts;
+    const totalParts = associesExistants.reduce((sum, a) => sum + a.nombreParts, 0);
+    const nouveauTotal = totalParts + dataToUpdate.nombreParts;
 
-    if (nouveauTotal > 100) {
+    if (nouveauTotal > associeExistant.space.capitalSocial) {
       return res.status(400).json({
         success: false,
-        error: `Le total des parts dépasserait 100% (autres associés: ${totalParts}%, vous tentez de mettre ${dataToUpdate.pourcentageParts}%)`,
+        error: `Le total des parts dépasserait le capital social (${associeExistant.space.capitalSocial}) - Autres associés: ${totalParts}, vous tentez de mettre: ${dataToUpdate.nombreParts}`,
       });
     }
   }
@@ -174,8 +267,15 @@ exports.updateAssocie = asyncHandler(async (req, res) => {
   // Champs optionnels
   if (dataToUpdate.email === '') dataToUpdate.email = null;
   if (dataToUpdate.telephone === '') dataToUpdate.telephone = null;
+  if (dataToUpdate.valeurNominale) dataToUpdate.valeurNominale = parseFloat(dataToUpdate.valeurNominale);
+  if (dataToUpdate.soldeCCA !== undefined) dataToUpdate.soldeCCA = parseFloat(dataToUpdate.soldeCCA);
+
+  // Dates
+  if (dataToUpdate.dateEntree) dataToUpdate.dateEntree = new Date(dataToUpdate.dateEntree);
+  if (dataToUpdate.dateSortie) dataToUpdate.dateSortie = new Date(dataToUpdate.dateSortie);
 
   // Supprimer champs non modifiables
+  delete dataToUpdate.spaceId;
   delete dataToUpdate.compteId;
   delete dataToUpdate.id;
   delete dataToUpdate.createdAt;
@@ -185,17 +285,26 @@ exports.updateAssocie = asyncHandler(async (req, res) => {
     where: { id },
     data: dataToUpdate,
     include: {
-      compte: true,
+      space: true,
+      user: {
+        select: {
+          id: true,
+          email: true,
+          nom: true,
+          prenom: true,
+        }
+      }
     },
   });
 
   res.status(200).json({
     success: true,
+    message: 'Associé mis à jour',
     data: associe,
   });
 });
 
-// @desc    Supprimer un associé
+// @desc    Supprimer un associé (soft delete - marquer comme SORTI)
 // @route   DELETE /api/associes/:id
 // @access  Public
 exports.deleteAssocie = asyncHandler(async (req, res) => {
@@ -212,13 +321,18 @@ exports.deleteAssocie = asyncHandler(async (req, res) => {
     });
   }
 
-  await prisma.associe.delete({
+  // Soft delete : marquer comme SORTI
+  await prisma.associe.update({
     where: { id },
+    data: {
+      statut: 'SORTI',
+      dateSortie: new Date()
+    }
   });
 
   res.status(200).json({
     success: true,
     data: {},
-    message: 'Associé supprimé avec succès',
+    message: 'Associé marqué comme sorti avec succès',
   });
 });

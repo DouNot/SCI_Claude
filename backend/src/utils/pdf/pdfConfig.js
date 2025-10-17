@@ -74,7 +74,8 @@ module.exports = {
     city: 'Paris',
     phone: '01 23 45 67 89',
     email: 'contact@sci-claude.fr',
-    siret: '123 456 789 00012',
+    siren: '123456789',      // SIREN (9 chiffres)
+    siret: '123 456 789 00012', // SIRET (14 chiffres)
     // logo: null, // Chemin vers le logo si disponible
   },
 

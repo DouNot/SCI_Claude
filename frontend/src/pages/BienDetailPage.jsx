@@ -1,14 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { biensAPI, bauxAPI, facturesAPI, travauxAPI, documentsAPI, pretsAPI, evenementsFiscauxAPI, locatairesAPI } from '../services/api';
-import { ArrowLeft, Edit, MapPin, Home, Calendar, Euro, FileText, Wrench, Users, TrendingUp, Plus, Trash2, Pencil, Eye, X, Download } from 'lucide-react';
+import { ArrowLeft, Edit, MapPin, Home, Calendar, Euro, FileText, Wrench, Users, TrendingUp, Plus, Trash2, Pencil, Eye, X, Download, Mail, Building2, Warehouse, Car, TreePine } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import PretForm from '../components/PretForm';
 import TravauxForm from '../components/TravauxForm';
 import DocumentForm from '../components/DocumentForm';
 import BailForm from '../components/BailForm';
 import BienForm from '../components/BienForm';
+import QuittanceForm from '../components/QuittanceForm';
+import LocataireForm from '../components/LocataireForm';
+import ResilierBailModal from '../components/ResilierBailModal';
 
-function BienDetailPage({ bienId, onNavigate }) {
+function BienDetailPage() {
+  const { id: bienId } = useParams();
+  const navigate = useNavigate();
   const [bien, setBien] = useState(null);
   const [baux, setBaux] = useState([]);
   const [factures, setFactures] = useState([]);
@@ -23,6 +29,9 @@ function BienDetailPage({ bienId, onNavigate }) {
   const [showTravauxForm, setShowTravauxForm] = useState(false);
   const [showDocumentForm, setShowDocumentForm] = useState(false);
   const [showBienForm, setShowBienForm] = useState(false);
+  const [showQuittanceForm, setShowQuittanceForm] = useState(false);
+  const [showLocataireForm, setShowLocataireForm] = useState(false);
+  const [showResilierBailModal, setShowResilierBailModal] = useState(false);
   const [pretToEdit, setPretToEdit] = useState(null);
   const [travauxToEdit, setTravauxToEdit] = useState(null);
   const [documentToEdit, setDocumentToEdit] = useState(null);
@@ -176,11 +185,21 @@ function BienDetailPage({ bienId, onNavigate }) {
     if (confirm(`Êtes-vous sûr de vouloir supprimer ce bien ?\n\n${bien.adresse}, ${bien.ville}\n\n⚠️ Cette action est irréversible et supprimera également tous les baux, documents et travaux associés !`)) {
       try {
         await biensAPI.delete(bienId);
-        onNavigate('biens');
+        navigate('/biens');
       } catch (err) {
         console.error('Erreur suppression:', err);
         alert('Erreur lors de la suppression du bien');
       }
+    }
+  };
+
+  const handleUpdateLocataire = async (id, locataireData) => {
+    try {
+      await locatairesAPI.update(id, locataireData);
+      await loadBienData();
+      setShowLocataireForm(false);
+    } catch (err) {
+      throw err;
     }
   };
 
@@ -211,6 +230,18 @@ function BienDetailPage({ bienId, onNavigate }) {
   const bailActif = baux.find(b => b.statut === 'ACTIF');
   const photoUrl = bien.photos?.find(p => p.isPrimary)?.url || bien.photos?.[0]?.url;
 
+  // Icônes selon le type de bien (comme dans BiensCard)
+  const typeIcons = {
+    APPARTEMENT: Home,
+    MAISON: Home,
+    LOCAL_COMMERCIAL: Building2,
+    BUREAUX: Building2,
+    HANGAR: Warehouse,
+    PARKING: Car,
+    TERRAIN: TreePine
+  };
+  const PlaceholderIcon = typeIcons[bien.type] || Home;
+
   return (
     <div className="min-h-screen bg-dark-950 text-white">
       {/* Header fixe */}
@@ -218,7 +249,7 @@ function BienDetailPage({ bienId, onNavigate }) {
         <div className="max-w-[1600px] mx-auto px-8 py-5">
           <div className="flex items-center justify-between">
             <button
-              onClick={() => onNavigate('biens')}
+              onClick={() => navigate('/biens')}
               className="flex items-center gap-2 text-light-400 hover:text-white transition-all hover:gap-3"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -292,7 +323,7 @@ function BienDetailPage({ bienId, onNavigate }) {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-dark-800 to-dark-700">
-                <Home className="h-24 w-24 text-accent-blue/40" />
+                <PlaceholderIcon className="h-24 w-24 text-accent-blue/40" />
               </div>
             )}
           </div>
@@ -509,23 +540,58 @@ function BienDetailPage({ bienId, onNavigate }) {
           </div>
 
           {bailActif ? (
-            <div className="bg-dark-900 rounded-2xl border border-dark-600/30 shadow-card p-6">
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-light-500">Nom</p>
-                  <p className="text-white font-medium text-xl">{bailActif.locataire?.nom}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-light-500">Loyer HC</p>
-                    <p className="text-accent-green font-semibold">{bailActif.loyerHC.toLocaleString('fr-FR')} €</p>
+            <div className="space-y-4">
+              <div className="bg-dark-900 rounded-2xl border border-dark-600/30 shadow-card p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <p className="text-sm text-light-500">Nom</p>
+                      <p className="text-white font-medium text-xl">
+                        {bailActif.locataire?.typeLocataire === 'ENTREPRISE' 
+                          ? bailActif.locataire?.raisonSociale 
+                          : `${bailActif.locataire?.prenom} ${bailActif.locataire?.nom}`}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-light-500">Loyer HC</p>
+                        <p className="text-accent-green font-semibold">{bailActif.loyerHC.toLocaleString('fr-FR')} €</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-light-500">Charges</p>
+                        <p className="text-white font-medium">{(bailActif.charges || 0).toLocaleString('fr-FR')} €</p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-light-500">Charges</p>
-                    <p className="text-white font-medium">{(bailActif.charges || 0).toLocaleString('fr-FR')} €</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowLocataireForm(true)}
+                      className="p-2 bg-accent-blue/10 hover:bg-accent-blue/20 rounded-xl border border-accent-blue/20 transition"
+                      title="Modifier le locataire"
+                    >
+                      <Pencil className="h-4 w-4 text-accent-blue" />
+                    </button>
+                    <button
+                      onClick={() => setShowResilierBailModal(true)}
+                      className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 rounded-xl border border-red-500/20 text-red-400 font-medium text-sm transition"
+                      title="Résilier le bail"
+                    >
+                      Résilier
+                    </button>
                   </div>
                 </div>
               </div>
+              
+              {/* Bouton générer quittance/facture */}
+              <button
+                onClick={() => setShowQuittanceForm(true)}
+                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-accent-blue/20 to-accent-purple/20 hover:from-accent-blue/30 hover:to-accent-purple/30 border border-accent-blue/30 rounded-2xl text-accent-blue font-semibold transition-all shadow-card hover:shadow-card-hover"
+              >
+                <FileText className="h-5 w-5" />
+                {bailActif.locataire?.typeLocataire === 'ENTREPRISE' 
+                  ? 'Générer une facture' 
+                  : 'Générer une quittance de loyer'}
+              </button>
             </div>
           ) : (
             <div className="bg-dark-900 rounded-3xl border border-dark-600/30 shadow-card p-20 text-center">
@@ -675,181 +741,194 @@ function BienDetailPage({ bienId, onNavigate }) {
         />
       )}
 
+      {/* Modal Génération Quittance */}
+      {showQuittanceForm && bailActif && (
+        <QuittanceForm
+          onClose={() => setShowQuittanceForm(false)}
+          bail={bailActif}
+        />
+      )}
+
+      {/* Modal Modification Locataire */}
+      {showLocataireForm && bailActif && (
+        <LocataireForm
+          onClose={() => setShowLocataireForm(false)}
+          onSubmit={handleUpdateLocataire}
+          locataireToEdit={bailActif.locataire}
+        />
+      )}
+
+      {/* Modal Résilier Bail */}
+      {showResilierBailModal && bailActif && (
+        <ResilierBailModal
+          bail={bailActif}
+          onClose={() => setShowResilierBailModal(false)}
+          onSuccess={() => {
+            setShowResilierBailModal(false);
+            loadBienData();
+          }}
+        />
+      )}
+
       {/* Modal Détails du prêt avec tableau d'amortissement */}
       {(pretDetails || loadingDetails) && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setPretDetails(null)}>
-          <div className="bg-dark-900 rounded-3xl border border-dark-600/30 shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-dark-900/95 backdrop-blur-sm border-b border-dark-700/50 px-8 py-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">
-                Détails du prêt{pretDetails && pretDetails.organisme ? ` - ${pretDetails.organisme}` : ''}
-              </h2>
-              <button onClick={() => { setPretDetails(null); setLoadingDetails(false); }} className="text-light-400 hover:text-white transition p-2 hover:bg-dark-800 rounded-xl">
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            
-            <div className="p-8">
-              {loadingDetails ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-accent-blue mx-auto mb-4"></div>
-                    <p className="text-light-300">Chargement du tableau d'amortissement...</p>
+          <div className="bg-dark-900 rounded-3xl border border-dark-600/30 max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            {loadingDetails ? (
+              <div className="p-20 text-center">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-accent-blue mx-auto"></div>
+                <p className="text-light-300 mt-6">Chargement des détails...</p>
+              </div>
+            ) : pretDetails ? (
+              <>
+                {/* Header */}
+                <div className="sticky top-0 bg-dark-900 border-b border-dark-700 px-8 py-6 flex items-center justify-between z-10">
+                  <div>
+                    <h2 className="text-3xl font-bold text-white mb-2">Détails du prêt</h2>
+                    <p className="text-light-400">{pretDetails.organisme}</p>
+                  </div>
+                  <button
+                    onClick={() => setPretDetails(null)}
+                    className="p-3 hover:bg-dark-800 rounded-xl transition"
+                  >
+                    <X className="h-6 w-6 text-light-400" />
+                  </button>
+                </div>
+
+                {/* Résumé */}
+                <div className="p-8 border-b border-dark-700">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div>
+                      <p className="text-sm text-light-500 mb-2">Montant emprunté</p>
+                      <p className="text-white font-bold text-2xl">{(pretDetails.montant || 0).toLocaleString('fr-FR')} €</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-light-500 mb-2">Taux annuel</p>
+                      <p className="text-accent-blue font-bold text-2xl">{pretDetails.taux || 0}%</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-light-500 mb-2">Durée</p>
+                      <p className="text-white font-bold text-2xl">{pretDetails.duree || 0} mois</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-light-500 mb-2">Mensualité</p>
+                      <p className="text-accent-green font-bold text-2xl">{(pretDetails.mensualite || 0).toLocaleString('fr-FR')} €</p>
+                    </div>
                   </div>
                 </div>
-              ) : pretDetails && pretDetails.amortissement ? (
-                <>
-                  {/* Résumé */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-dark-800/50 rounded-2xl p-5 border border-dark-700/50">
-                      <p className="text-sm text-light-500 mb-2 font-medium">Mensualité</p>
-                      <p className="text-2xl font-bold text-accent-blue">
-                        {pretDetails.amortissement.mensualiteTotale.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                      </p>
-                    </div>
-                    <div className="bg-dark-800/50 rounded-2xl p-5 border border-dark-700/50">
-                      <p className="text-sm text-light-500 mb-2 font-medium">Coût total</p>
-                      <p className="text-2xl font-bold text-accent-green">
-                        {pretDetails.amortissement.coutTotal.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                      </p>
-                    </div>
-                    <div className="bg-dark-800/50 rounded-2xl p-5 border border-dark-700/50">
-                      <p className="text-sm text-light-500 mb-2 font-medium">Coût intérêts</p>
-                      <p className="text-2xl font-bold text-accent-orange">
-                        {pretDetails.amortissement.coutInterets.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                      </p>
-                    </div>
-                    <div className="bg-dark-800/50 rounded-2xl p-5 border border-dark-700/50">
-                      <p className="text-sm text-light-500 mb-2 font-medium">Coût assurance</p>
-                      <p className="text-2xl font-bold text-accent-purple">
-                        {pretDetails.amortissement.coutAssurance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Graphique d'évolution */}
-                  <div className="mb-8">
-                    <h3 className="text-xl font-bold mb-4 text-white">
-                      Évolution Capital / Intérêts
-                    </h3>
-                    <div className="bg-dark-800/30 rounded-2xl p-6 border border-dark-700/50">
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={pretDetails.amortissement.tableau.filter((_, index) => index % Math.ceil(pretDetails.amortissement.tableau.length / 50) === 0)}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#34364a" />
-                          <XAxis 
-                            dataKey="mois" 
-                            stroke="#8b8fa8"
-                            label={{ value: 'Mois', position: 'insideBottom', offset: -5, fill: '#8b8fa8' }}
-                          />
-                          <YAxis 
-                            stroke="#8b8fa8"
-                            label={{ value: 'Montant (€)', angle: -90, position: 'insideLeft', fill: '#8b8fa8' }}
-                            tickFormatter={(value) => value.toLocaleString('fr-FR')}
-                          />
-                          <Tooltip 
-                            contentStyle={{ backgroundColor: '#1c1c24', border: '1px solid #3b82f6', borderRadius: '12px' }}
-                            labelStyle={{ color: '#fff' }}
-                            itemStyle={{ color: '#e8e9ef' }}
-                            formatter={(value) => value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'}
-                            labelFormatter={(label) => `Mois ${label}`}
-                          />
-                          <Legend wrapperStyle={{ color: '#e8e9ef' }} />
-                          <Line 
-                            type="monotone" 
-                            dataKey="capitalRestant" 
-                            stroke="#3b82f6" 
-                            strokeWidth={3}
-                            name="Capital restant dû"
-                            dot={false}
-                          />
-                          <Line 
-                            type="monotone" 
-                            dataKey="capitalAmortiCumule" 
-                            stroke="#10b981" 
-                            strokeWidth={3}
-                            name="Capital amorti cumulé"
-                            dot={false}
-                          />
-                          <Line 
-                            type="monotone" 
-                            dataKey="interets" 
-                            stroke="#f97316" 
-                            strokeWidth={3}
-                            name="Intérêts"
-                            dot={false}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
+                {/* Graphique */}
+                <div className="p-8 border-b border-dark-700">
+                  <h3 className="text-xl font-bold text-white mb-6">Évolution du capital</h3>
+                  <div className="h-80 bg-dark-950/50 rounded-2xl p-6">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={pretDetails.amortissement?.tableau?.filter((_, i) => i % 12 === 0) || []}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis 
+                          dataKey="mois" 
+                          stroke="#9CA3AF"
+                          label={{ value: 'Années', position: 'insideBottom', offset: -5, fill: '#9CA3AF' }}
+                        />
+                        <YAxis 
+                          stroke="#9CA3AF"
+                          tickFormatter={(value) => `${(value / 1000).toFixed(0)}k€`}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: '#1a1a1a', 
+                            border: '1px solid #374151',
+                            borderRadius: '0.75rem',
+                            color: '#fff'
+                          }}
+                          formatter={(value) => [`${value.toLocaleString('fr-FR')} €`, '']}
+                        />
+                        <Legend />
+                        <Line 
+                          type="monotone" 
+                          dataKey="capitalRestant" 
+                          name="Capital restant"
+                          stroke="#f59e0b" 
+                          strokeWidth={3}
+                          dot={false}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="capitalAmortiCumule" 
+                          name="Capital amorti"
+                          stroke="#10b981" 
+                          strokeWidth={3}
+                          dot={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
+                </div>
 
-                  {/* Tableau d'amortissement */}
-                  <div>
-                    <h3 className="text-xl font-bold mb-4 text-white">
-                      Tableau d'amortissement
-                    </h3>
-                    <div className="bg-dark-800/30 rounded-2xl border border-dark-700/50 overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full">
-                          <thead className="bg-dark-800/50">
-                            <tr>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-light-400 uppercase tracking-wider">Mois</th>
-                              <th className="px-4 py-3 text-left text-xs font-bold text-light-400 uppercase tracking-wider">Date</th>
-                              <th className="px-4 py-3 text-right text-xs font-bold text-light-400 uppercase tracking-wider">Mensualité</th>
-                              <th className="px-4 py-3 text-right text-xs font-bold text-light-400 uppercase tracking-wider">Capital</th>
-                              <th className="px-4 py-3 text-right text-xs font-bold text-light-400 uppercase tracking-wider">Intérêts</th>
-                              <th className="px-4 py-3 text-right text-xs font-bold text-light-400 uppercase tracking-wider">Assurance</th>
-                              <th className="px-4 py-3 text-right text-xs font-bold text-light-400 uppercase tracking-wider">Restant dû</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-dark-700/50">
-                            {pretDetails.amortissement.tableau.map((ligne) => (
-                              <tr key={ligne.mois} className="hover:bg-dark-800/30 transition">
-                                <td className="px-4 py-3 text-sm text-white font-medium">{ligne.mois}</td>
-                                <td className="px-4 py-3 text-sm text-light-400">
-                                  {new Date(ligne.date).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}
-                                </td>
-                                <td className="px-4 py-3 text-sm text-white text-right font-medium">
-                                  {ligne.mensualite.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                                </td>
-                                <td className="px-4 py-3 text-sm text-accent-green text-right font-semibold">
-                                  {ligne.capital.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                                </td>
-                                <td className="px-4 py-3 text-sm text-accent-orange text-right">
-                                  {ligne.interets.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                                </td>
-                                <td className="px-4 py-3 text-sm text-accent-purple text-right">
-                                  {ligne.assurance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                                </td>
-                                <td className="px-4 py-3 text-sm text-accent-blue text-right font-semibold">
-                                  {ligne.capitalRestant.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                {/* Tableau d'amortissement */}
+                <div className="p-8">
+                  <h3 className="text-xl font-bold text-white mb-6">Tableau d'amortissement</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-dark-700">
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-light-400">Mois</th>
+                          <th className="text-right py-3 px-4 text-sm font-semibold text-light-400">Mensualité</th>
+                          <th className="text-right py-3 px-4 text-sm font-semibold text-light-400">Capital</th>
+                          <th className="text-right py-3 px-4 text-sm font-semibold text-light-400">Intérêts</th>
+                          <th className="text-right py-3 px-4 text-sm font-semibold text-light-400">Assurance</th>
+                          <th className="text-right py-3 px-4 text-sm font-semibold text-light-400">Capital restant</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pretDetails.amortissement?.tableau?.map((ligne, index) => (
+                          <tr key={index} className="border-b border-dark-800 hover:bg-dark-800/30 transition">
+                            <td className="py-3 px-4 text-white font-medium">{ligne.mois}</td>
+                            <td className="py-3 px-4 text-right text-white">{ligne.mensualite.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td>
+                            <td className="py-3 px-4 text-right text-accent-green">{ligne.capital.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td>
+                            <td className="py-3 px-4 text-right text-accent-orange">{ligne.interets.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td>
+                            <td className="py-3 px-4 text-right text-light-400">{(ligne.assurance || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td>
+                            <td className="py-3 px-4 text-right text-white font-semibold">{ligne.capitalRestant.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Totaux */}
+                <div className="px-8 pb-8">
+                  <div className="bg-dark-950/50 rounded-2xl p-6">
+                    <h3 className="text-lg font-bold text-white mb-4">Totaux</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                      <div>
+                        <p className="text-sm text-light-500 mb-1">Total payé</p>
+                        <p className="text-white font-bold text-xl">
+                          {((pretDetails.mensualite || 0) * (pretDetails.duree || 0)).toLocaleString('fr-FR')} €
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-light-500 mb-1">Total intérêts</p>
+                        <p className="text-accent-orange font-bold text-xl">
+                          {(((pretDetails.mensualite || 0) * (pretDetails.duree || 0)) - (pretDetails.montant || 0)).toLocaleString('fr-FR')} €
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-light-500 mb-1">Coût total</p>
+                        <p className="text-red-400 font-bold text-xl">
+                          {(((pretDetails.mensualite || 0) * (pretDetails.duree || 0))).toLocaleString('fr-FR')} €
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-light-500 mb-1">Taux effectif</p>
+                        <p className="text-accent-blue font-bold text-xl">
+                          {(((((pretDetails.mensualite || 0) * (pretDetails.duree || 0)) - (pretDetails.montant || 0)) / (pretDetails.montant || 1)) * 100).toFixed(2)}%
+                        </p>
                       </div>
                     </div>
                   </div>
-                </>
-              ) : (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6">
-                  <p className="text-red-400 font-semibold mb-2">⚠️ Erreur</p>
-                  <p className="text-red-300">Impossible de charger le tableau d'amortissement</p>
-                  <pre className="mt-4 text-xs bg-dark-800 p-4 rounded overflow-auto text-light-400">
-                    {JSON.stringify(pretDetails, null, 2)}
-                  </pre>
                 </div>
-              )}
-            </div>
-
-            <div className="sticky bottom-0 bg-dark-900/95 backdrop-blur-sm border-t border-dark-700/50 px-8 py-4">
-              <button
-                onClick={() => { setPretDetails(null); setLoadingDetails(false); }}
-                className="w-full px-6 py-3 bg-accent-blue hover:bg-accent-blue-light rounded-2xl transition font-semibold"
-              >
-                Fermer
-              </button>
-            </div>
+              </>
+            ) : null}
           </div>
         </div>
       )}

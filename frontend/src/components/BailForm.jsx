@@ -14,6 +14,8 @@ function BailForm({ onClose, onSubmit, bailToEdit = null, biensList = [], locata
     charges: '',
     depotGarantie: '',
     indexRevision: '',
+    refactureTaxeFonciere: false,
+    montantTaxeFonciere: '',
     statut: 'ACTIF',
     bienId: '',
     locataireId: '',
@@ -35,6 +37,8 @@ function BailForm({ onClose, onSubmit, bailToEdit = null, biensList = [], locata
         charges: bailToEdit.charges || '',
         depotGarantie: bailToEdit.depotGarantie || '',
         indexRevision: bailToEdit.indexRevision || '',
+        refactureTaxeFonciere: bailToEdit.refactureTaxeFonciere || false,
+        montantTaxeFonciere: bailToEdit.montantTaxeFonciere || '',
         statut: bailToEdit.statut || 'ACTIF',
         bienId: bailToEdit.bienId || '',
         locataireId: bailToEdit.locataireId || '',
@@ -49,10 +53,10 @@ function BailForm({ onClose, onSubmit, bailToEdit = null, biensList = [], locata
   }, [bailToEdit, biensList]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
@@ -321,6 +325,46 @@ function BailForm({ onClose, onSubmit, bailToEdit = null, biensList = [], locata
                     placeholder="2400"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Taxe Foncière */}
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">🏠 Taxe Foncière</h3>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-4 bg-[#0f0f0f] border border-gray-800 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="refactureTaxeFonciere"
+                    name="refactureTaxeFonciere"
+                    checked={formData.refactureTaxeFonciere}
+                    onChange={handleChange}
+                    className="w-5 h-5 rounded border-gray-700 bg-[#0f0f0f] text-blue-600 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
+                  />
+                  <label htmlFor="refactureTaxeFonciere" className="text-white font-medium cursor-pointer select-none">
+                    Refacturer la taxe foncière au locataire
+                  </label>
+                </div>
+                
+                {formData.refactureTaxeFonciere && (
+                  <div className="animate-fade-in">
+                    <label className="block text-sm font-medium text-gray-200 mb-1">
+                      Montant de TF refacturé (€/an)
+                    </label>
+                    <input
+                      type="number"
+                      name="montantTaxeFonciere"
+                      value={formData.montantTaxeFonciere}
+                      onChange={handleChange}
+                      step="0.01"
+                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+                      placeholder="1500"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      💡 Montant annuel de la taxe foncière à refacturer (sera divisé sur 12 mois)
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 

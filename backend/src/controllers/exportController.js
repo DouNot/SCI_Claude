@@ -258,53 +258,361 @@ exports.exportBienBilanPDF = asyncHandler(async (req, res) => {
 
   const cashFlow = loyersTotal - chargesTotal - mensualitesPrets - facturesTotal;
 
-  // Créer le PDF
-  const doc = new PDFDocument({ margin: 50 });
+  // Créer le PDF avec style moderne
+  const doc = new PDFDocument({ margin: 0, size: 'A4' });
   
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename=bilan-${bien.adresse.replace(/\s/g, '-')}.pdf`);
 
   doc.pipe(res);
 
-  // Titre
-  doc.fontSize(24).text('Bilan du Bien', { align: 'center' });
-  doc.moveDown();
+  // ==================== PAGE 1: VUE D'ENSEMBLE ====================
   
-  // Informations du bien
-  doc.fontSize(16).text('Informations Générales', { underline: true });
-  doc.fontSize(12);
-  doc.text(`Adresse: ${bien.adresse}`);
-  doc.text(`Ville: ${bien.ville} ${bien.codePostal}`);
-  doc.text(`Type: ${helpers.formatBienType(bien.type)}`);
-  doc.text(`Surface: ${bien.surface} m2`);
-  doc.text(`Prix d'achat: ${bien.prixAchat.toLocaleString('fr-FR')} €`);
-  doc.text(`Date d'achat: ${new Date(bien.dateAchat).toLocaleDateString('fr-FR')}`);
-  doc.moveDown(2);
-
-  // Revenus
-  doc.fontSize(16).text('Revenus', { underline: true });
-  doc.fontSize(12);
-  doc.text(`Loyers percus: ${helpers.formatCurrency(loyersTotal)}`, { color: 'green' });
-  doc.moveDown();
-
-  // Dépenses
-  doc.fontSize(16).text('Dépenses', { underline: true });
-  doc.fontSize(12);
-  doc.text(`Charges: ${helpers.formatCurrency(chargesTotal)}`, { color: 'red' });
-  doc.text(`Mensualites de pret: ${helpers.formatCurrency(mensualitesPrets)}`, { color: 'red' });
-  doc.text(`Factures: ${helpers.formatCurrency(facturesTotal)}`, { color: 'red' });
-  doc.text(`Travaux: ${helpers.formatCurrency(travauxTotal)}`, { color: 'red' });
-  doc.moveDown();
-
-  // Bilan
-  doc.fontSize(16).text('Bilan', { underline: true });
-  doc.fontSize(14);
-  const color = cashFlow >= 0 ? 'green' : 'red';
-  doc.fillColor(color).text(`Cash-flow: ${helpers.formatCurrency(cashFlow, true)}`, { bold: true });
+  // Fond de page
+  doc.rect(0, 0, 595, 842).fill('#f8fafc');
   
+  // En-tête avec dégradé bleu
+  doc.rect(0, 0, 595, 180).fill('#1e3a8a');
+  
+  // Logo/icône circulaire
+  doc.circle(50, 50, 30).fill('#3b82f6');
+  doc.fontSize(20).font('Helvetica-Bold').fillColor('#ffffff').text('SCI', 35, 38);
+  
+  // Titre principal
+  doc.fontSize(36).font('Helvetica-Bold').fillColor('#ffffff').text('Bilan du Bien', 100, 30);
+  
+  // Date de génération
+  doc.fontSize(12).font('Helvetica').fillColor('#93c5fd');
+  doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`, 100, 75);
+  
+  // Adresse du bien en gros
+  doc.fontSize(17).font('Helvetica-Bold').fillColor('#ffffff').text(bien.adresse, 50, 115, { width: 495 });
+  doc.fontSize(13).font('Helvetica').fillColor('#bfdbfe').text(`${bien.codePostal} ${bien.ville}`, 50, 145);
+  
+  // Section: Informations clés avec cartes
+  let currentY = 190;
+  
+  // Carte 1: Type et Surface
+  doc.roundedRect(40, currentY, 160, 90, 10).fill('#ffffff');
+  doc.rect(40, currentY, 160, 6).fill('#8b5cf6');
+  doc.fontSize(10).font('Helvetica').fillColor('#64748b').text('Type de bien', 55, currentY + 18, { width: 130 });
+  doc.fontSize(15).font('Helvetica-Bold').fillColor('#1e293b').text(helpers.formatBienType(bien.type), 55, currentY + 38, { width: 130 });
+  doc.fontSize(11).font('Helvetica').fillColor('#64748b').text(`${bien.surface || '?'} m²`, 55, currentY + 68, { width: 130 });
+  
+  // Carte 2: Prix d'achat
+  doc.roundedRect(215, currentY, 160, 90, 10).fill('#ffffff');
+  doc.rect(215, currentY, 160, 6).fill('#3b82f6');
+  doc.fontSize(10).fillColor('#64748b').text('Prix d\'achat', 230, currentY + 18, { width: 130 });
+  doc.fontSize(18).font('Helvetica-Bold').fillColor('#1e40af').text(
+    `${(bien.prixAchat / 1000).toFixed(0)}k €`, 
+    230, 
+    currentY + 38,
+    { width: 130 }
+  );
+  doc.fontSize(10).fillColor('#64748b').text(
+    new Date(bien.dateAchat).toLocaleDateString('fr-FR'), 
+    230, 
+    currentY + 66,
+    { width: 130 }
+  );
+  
+  // Carte 3: Valeur actuelle
+  doc.roundedRect(390, currentY, 165, 90, 10).fill('#ffffff');
+  doc.rect(390, currentY, 165, 6).fill('#10b981');
+  doc.fontSize(10).fillColor('#64748b').text('Valeur actuelle', 405, currentY + 18, { width: 135 });
+  doc.fontSize(18).font('Helvetica-Bold').fillColor('#047857').text(
+    `${((bien.valeurActuelle || bien.prixAchat) / 1000).toFixed(0)}k €`, 
+    405, 
+    currentY + 38,
+    { width: 135 }
+  );
+  const plusValue = (bien.valeurActuelle || bien.prixAchat) - bien.prixAchat;
+  const plusValuePct = ((plusValue / bien.prixAchat) * 100).toFixed(1);
+  doc.fontSize(10).fillColor(plusValue >= 0 ? '#10b981' : '#ef4444').text(
+    `${plusValue >= 0 ? '+' : ''}${plusValuePct}%`, 
+    405, 
+    currentY + 66,
+    { width: 135 }
+  );
+  
+  currentY += 105;
+  
+  // Section: Performance financière avec fond coloré
+  doc.roundedRect(40, currentY, 515, 165, 12).fill('#1e293b');
+  doc.rect(40, currentY, 515, 8).fill('#3b82f6');
+  
+  doc.fontSize(20).font('Helvetica-Bold').fillColor('#ffffff').text('Performance Financière', 60, currentY + 25, { width: 450 });
+  
+  // Cash-flow en grand
+  doc.fontSize(13).fillColor('#cbd5e1').text('Cash-flow annuel', 60, currentY + 60, { width: 300 });
+  const cashFlowColor = cashFlow >= 0 ? '#10b981' : '#ef4444';
+  doc.fontSize(34).font('Helvetica-Bold').fillColor(cashFlowColor).text(
+    helpers.formatCurrency(cashFlow, true), 
+    60, 
+    currentY + 80,
+    { width: 300 }
+  );
+  
+  // Encadré rentabilité
   if (bien.prixAchat > 0) {
     const rentabilite = ((cashFlow / bien.prixAchat) * 100).toFixed(2);
-    doc.fillColor('black').text(`Rentabilité: ${rentabilite}%`);
+    doc.roundedRect(375, currentY + 60, 150, 90, 10).fill('#334155');
+    doc.fontSize(11).fillColor('#94a3b8').text('Rentabilité nette', 385, currentY + 75, { width: 130, align: 'center' });
+    doc.fontSize(28).font('Helvetica-Bold').fillColor(cashFlowColor).text(
+      `${rentabilite}%`, 
+      385, 
+      currentY + 105,
+      { width: 130, align: 'center' }
+    );
+  }
+  
+  currentY += 180;
+  
+  // Section: Détail des flux avec fond blanc
+  doc.roundedRect(40, currentY, 515, 230, 12).fill('#ffffff');
+  doc.rect(40, currentY, 515, 6).fill('#64748b');
+  
+  doc.fontSize(17).font('Helvetica-Bold').fillColor('#1e293b').text('Détail des Flux Annuels', 60, currentY + 22, { width: 450 });
+  
+  let lineY = currentY + 60;
+  
+  // Revenus
+  doc.circle(70, lineY + 5, 9).fill('#d1fae5');
+  doc.fontSize(14).fillColor('#10b981').text('+', 66, lineY);
+  doc.fontSize(12).font('Helvetica').fillColor('#334155').text('Loyers perçus', 95, lineY + 2, { width: 280 });
+  doc.fontSize(12).font('Helvetica-Bold').fillColor('#10b981').text(
+    helpers.formatCurrency(loyersTotal, true), 
+    390, 
+    lineY + 2, 
+    { width: 145, align: 'right' }
+  );
+  
+  lineY += 36;
+  
+  // Charges courantes
+  doc.circle(70, lineY + 5, 9).fill('#fee2e2');
+  doc.fontSize(14).fillColor('#ef4444').text('-', 67, lineY);
+  doc.fontSize(12).font('Helvetica').fillColor('#334155').text('Charges récurrentes', 95, lineY + 2, { width: 280 });
+  doc.fontSize(12).font('Helvetica-Bold').fillColor('#ef4444').text(
+    helpers.formatCurrency(chargesTotal, true).replace('+', '-'), 
+    390, 
+    lineY + 2, 
+    { width: 145, align: 'right' }
+  );
+  
+  lineY += 36;
+  
+  // Mensualités de prêt
+  doc.circle(70, lineY + 5, 9).fill('#fee2e2');
+  doc.fontSize(14).fillColor('#ef4444').text('-', 67, lineY);
+  doc.fontSize(12).font('Helvetica').fillColor('#334155').text('Mensualités de prêt', 95, lineY + 2, { width: 280 });
+  doc.fontSize(12).font('Helvetica-Bold').fillColor('#ef4444').text(
+    helpers.formatCurrency(mensualitesPrets, true).replace('+', '-'), 
+    390, 
+    lineY + 2, 
+    { width: 145, align: 'right' }
+  );
+  
+  lineY += 36;
+  
+  // Factures
+  doc.circle(70, lineY + 5, 9).fill('#fee2e2');
+  doc.fontSize(14).fillColor('#ef4444').text('-', 67, lineY);
+  doc.fontSize(12).font('Helvetica').fillColor('#334155').text('Factures et travaux', 95, lineY + 2, { width: 280 });
+  doc.fontSize(12).font('Helvetica-Bold').fillColor('#ef4444').text(
+    helpers.formatCurrency(facturesTotal + travauxTotal, true).replace('+', '-'), 
+    390, 
+    lineY + 2, 
+    { width: 145, align: 'right' }
+  );
+  
+  lineY += 40;
+  
+  // Ligne de séparation
+  doc.rect(60, lineY, 475, 2).fill('#e2e8f0');
+  
+  lineY += 15;
+  
+  // Total avec fond coloré
+  doc.roundedRect(60, lineY, 475, 48, 8).fill('#f1f5f9');
+  doc.fontSize(14).font('Helvetica-Bold').fillColor('#1e293b').text('Cash-flow net annuel', 80, lineY + 16, { width: 250 });
+  doc.fontSize(16).font('Helvetica-Bold').fillColor(cashFlowColor).text(
+    helpers.formatCurrency(cashFlow, true), 
+    380, 
+    lineY + 16, 
+    { width: 135, align: 'right' }
+  );
+  
+  // ==================== PAGE 2: DÉTAILS DES BAUX ET PRÊTS ====================
+  
+  if (bien.baux.length > 0 || bien.prets.length > 0) {
+    doc.addPage();
+    doc.rect(0, 0, 595, 842).fill('#f8fafc');
+    
+    // En-tête page 2
+    doc.rect(0, 0, 595, 100).fill('#1e3a8a');
+    doc.fontSize(28).font('Helvetica-Bold').fillColor('#ffffff').text('Détails Financiers', 50, 35);
+    
+    currentY = 130;
+    
+    // Section Baux
+    if (bien.baux.length > 0) {
+      doc.fontSize(20).font('Helvetica-Bold').fillColor('#1e293b').text('Baux et Locataires', 50, currentY);
+      currentY += 40;
+      
+      bien.baux.forEach((bail, index) => {
+        if (currentY > 700) {
+          doc.addPage();
+          doc.rect(0, 0, 595, 842).fill('#f8fafc');
+          currentY = 50;
+        }
+        
+        // Carte pour chaque bail
+        const cardHeight = 100;
+        doc.roundedRect(40, currentY, 515, cardHeight, 10).fill('#ffffff');
+        
+        // Barre latérale de couleur
+        const bailColor = bail.statut === 'ACTIF' ? '#10b981' : '#94a3b8';
+        doc.rect(40, currentY, 8, cardHeight).fill(bailColor);
+        
+        // Numéro du bail
+        doc.circle(70, currentY + 28, 18).fill(bail.statut === 'ACTIF' ? '#d1fae5' : '#f1f5f9');
+        doc.fontSize(14).font('Helvetica-Bold').fillColor(bailColor).text(
+          (index + 1).toString(), 
+          63, 
+          currentY + 20
+        );
+        
+        // Infos locataire
+        const locataireNom = bail.locataire.typeLocataire === 'ENTREPRISE' 
+          ? bail.locataire.raisonSociale 
+          : `${bail.locataire.prenom} ${bail.locataire.nom}`;
+        
+        doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b').text(
+          locataireNom, 
+          105, 
+          currentY + 18,
+          { width: 260 }
+        );
+        
+        doc.fontSize(10).font('Helvetica').fillColor('#64748b').text(
+          `Du ${new Date(bail.dateDebut).toLocaleDateString('fr-FR')}${bail.dateFin ? ' au ' + new Date(bail.dateFin).toLocaleDateString('fr-FR') : ''}`, 
+          105, 
+          currentY + 38,
+          { width: 260 }
+        );
+        
+        // Badge statut
+        doc.roundedRect(105, currentY + 60, 65, 24, 6).fill(bail.statut === 'ACTIF' ? '#d1fae5' : '#f1f5f9');
+        doc.fontSize(10).font('Helvetica-Bold').fillColor(bailColor).text(
+          bail.statut, 
+          110, 
+          currentY + 67,
+          { width: 55, align: 'center' }
+        );
+        
+        // Loyer dans un encadré
+        doc.roundedRect(395, currentY + 18, 135, 65, 8).fill('#f1f5f9');
+        doc.fontSize(11).fillColor('#64748b').text('Loyer HC', 400, currentY + 28, { width: 125, align: 'center' });
+        doc.fontSize(17).font('Helvetica-Bold').fillColor('#3b82f6').text(
+          `${bail.loyerHC.toLocaleString('fr-FR')} €`, 
+          400, 
+          currentY + 50,
+          { width: 125, align: 'center' }
+        );
+        
+        currentY += cardHeight + 15;
+      });
+    }
+    
+    // Section Prêts
+    if (bien.prets.length > 0) {
+      if (currentY > 400) {
+        doc.addPage();
+        doc.rect(0, 0, 595, 842).fill('#f8fafc');
+        currentY = 50;
+      } else {
+        currentY += 20;
+      }
+      
+      doc.fontSize(20).font('Helvetica-Bold').fillColor('#1e293b').text('Prêts Immobiliers', 50, currentY);
+      currentY += 40;
+      
+      bien.prets.forEach((pret, index) => {
+        if (currentY > 700) {
+          doc.addPage();
+          doc.rect(0, 0, 595, 842).fill('#f8fafc');
+          currentY = 50;
+        }
+        
+        // Carte pour chaque prêt
+        const cardHeight = 110;
+        doc.roundedRect(40, currentY, 515, cardHeight, 10).fill('#ffffff');
+        doc.rect(40, currentY, 8, cardHeight).fill('#f97316');
+        
+        // Numéro du prêt
+        doc.circle(70, currentY + 28, 18).fill('#fed7aa');
+        doc.fontSize(14).font('Helvetica-Bold').fillColor('#c2410c').text(
+          (index + 1).toString(), 
+          63, 
+          currentY + 20
+        );
+        
+        // Infos prêt
+        doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b').text(
+          pret.organisme, 
+          105, 
+          currentY + 18,
+          { width: 260 }
+        );
+        
+        doc.fontSize(10).font('Helvetica').fillColor('#64748b').text(
+          `Depuis ${new Date(pret.dateDebut).toLocaleDateString('fr-FR')} • ${pret.duree} mois • Taux ${pret.taux}%`, 
+          105, 
+          currentY + 38,
+          { width: 260 }
+        );
+        
+        // Montants
+        doc.fontSize(10).fillColor('#64748b').text('Montant emprunté', 105, currentY + 65, { width: 200 });
+        doc.fontSize(14).font('Helvetica-Bold').fillColor('#1e293b').text(
+          `${(pret.montant / 1000).toFixed(0)}k €`, 
+          105, 
+          currentY + 82,
+          { width: 200 }
+        );
+        
+        // Mensualité dans un encadré
+        doc.roundedRect(395, currentY + 18, 135, 75, 8).fill('#fef3c7');
+        doc.fontSize(11).fillColor('#92400e').text('Mensualité', 400, currentY + 28, { width: 125, align: 'center' });
+        doc.fontSize(18).font('Helvetica-Bold').fillColor('#b45309').text(
+          `${pret.mensualite.toLocaleString('fr-FR')} €`, 
+          400, 
+          currentY + 53,
+          { width: 125, align: 'center' }
+        );
+        
+        currentY += cardHeight + 15;
+      });
+    }
+  }
+  
+  // Footer sur toutes les pages
+  const addFooter = (pageNum) => {
+    doc.rect(0, 792, 595, 50).fill('#1e293b');
+    doc.fontSize(9).fillColor('#94a3b8').text(
+      `Bilan du bien • ${bien.adresse} • Page ${pageNum}`,
+      0,
+      810,
+      { width: 595, align: 'center' }
+    );
+  };
+  
+  // Ajouter footer sur toutes les pages
+  const range = doc.bufferedPageRange();
+  for (let i = range.start; i < range.start + range.count; i++) {
+    doc.switchToPage(i);
+    addFooter(i + 1);
   }
 
   doc.end();
@@ -433,8 +741,25 @@ exports.exportDashboardExcel = asyncHandler(async (req, res) => {
 // @route   GET /api/exports/dashboard/pdf
 // @access  Public
 exports.exportDashboardPDF = asyncHandler(async (req, res) => {
+  // Récupérer TOUS les biens avec TOUTES leurs données pour les bilans détaillés
   const [biens, baux, charges, prets] = await Promise.all([
-    prisma.bien.findMany({ include: { photos: true } }),
+    prisma.bien.findMany({ 
+      include: { 
+        photos: true,
+        baux: {
+          include: {
+            locataire: true,
+            quittances: true,
+          },
+        },
+        prets: true,
+        charges: {
+          where: { estActive: true },
+        },
+        factures: true,
+        travaux: true,
+      } 
+    }),
     prisma.bail.findMany({ 
       where: { statut: 'ACTIF' },
       include: { 
@@ -510,7 +835,7 @@ exports.exportDashboardPDF = asyncHandler(async (req, res) => {
   const doc = new PDFDocument({ margin: 0, size: 'A4' });
   
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', 'attachment; filename=dashboard-sci.pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename=export-patrimoine-sci.pdf');
 
   doc.pipe(res);
 
@@ -738,11 +1063,355 @@ exports.exportDashboardPDF = asyncHandler(async (req, res) => {
     currentY += 95;
   });
   
+  // ==================== BILANS DÉTAILLÉS DE CHAQUE BIEN ====================
+  
+  // Pour chaque bien, ajouter son bilan détaillé
+  biens.forEach((bien, bienIndex) => {
+    // Calculer les totaux pour ce bien
+    const loyersTotal = bien.baux.reduce((sum, bail) => {
+      return sum + bail.quittances.reduce((qSum, q) => qSum + q.montantTotal, 0);
+    }, 0);
+
+    const chargesTotal = bien.charges.reduce((sum, c) => {
+      let montantAnnuel = 0;
+      switch (c.frequence) {
+        case 'MENSUELLE': montantAnnuel = c.montant * 12; break;
+        case 'TRIMESTRIELLE': montantAnnuel = c.montant * 4; break;
+        case 'SEMESTRIELLE': montantAnnuel = c.montant * 2; break;
+        case 'ANNUELLE': montantAnnuel = c.montant; break;
+      }
+      return sum + montantAnnuel;
+    }, 0);
+
+    const mensualitesPrets = bien.prets.reduce((sum, p) => sum + (p.mensualite * 12), 0);
+    const facturesTotal = bien.factures.reduce((sum, f) => sum + f.montantTTC, 0);
+    const travauxTotal = bien.travaux.reduce((sum, t) => sum + (t.coutReel || t.coutEstime), 0);
+    const cashFlow = loyersTotal - chargesTotal - mensualitesPrets - facturesTotal;
+    
+    // Nouvelle page pour le bilan du bien
+    doc.addPage();
+    doc.rect(0, 0, 595, 842).fill('#f8fafc');
+    
+    // En-tête avec dégradé bleu
+    doc.rect(0, 0, 595, 180).fill('#1e3a8a');
+    
+    // Logo/icône circulaire
+    doc.circle(50, 50, 30).fill('#3b82f6');
+    doc.fontSize(20).font('Helvetica-Bold').fillColor('#ffffff').text('SCI', 35, 38);
+    
+    // Titre principal
+    doc.fontSize(36).font('Helvetica-Bold').fillColor('#ffffff').text('Bilan du Bien', 100, 30);
+    
+    // Date de génération
+    doc.fontSize(12).font('Helvetica').fillColor('#93c5fd');
+    doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`, 100, 75);
+    
+    // Adresse du bien en gros
+    doc.fontSize(17).font('Helvetica-Bold').fillColor('#ffffff').text(bien.adresse, 50, 115, { width: 495 });
+    doc.fontSize(13).font('Helvetica').fillColor('#bfdbfe').text(`${bien.codePostal} ${bien.ville}`, 50, 145);
+    
+    // Section: Informations clés avec cartes
+    let bienY = 190;
+    
+    // Carte 1: Type et Surface
+    doc.roundedRect(40, bienY, 160, 90, 10).fill('#ffffff');
+    doc.rect(40, bienY, 160, 6).fill('#8b5cf6');
+    doc.fontSize(10).font('Helvetica').fillColor('#64748b').text('Type de bien', 55, bienY + 18, { width: 130 });
+    doc.fontSize(15).font('Helvetica-Bold').fillColor('#1e293b').text(helpers.formatBienType(bien.type), 55, bienY + 38, { width: 130 });
+    doc.fontSize(11).font('Helvetica').fillColor('#64748b').text(`${bien.surface || '?'} m²`, 55, bienY + 68, { width: 130 });
+    
+    // Carte 2: Prix d'achat
+    doc.roundedRect(215, bienY, 160, 90, 10).fill('#ffffff');
+    doc.rect(215, bienY, 160, 6).fill('#3b82f6');
+    doc.fontSize(10).fillColor('#64748b').text('Prix d\'achat', 230, bienY + 18, { width: 130 });
+    doc.fontSize(18).font('Helvetica-Bold').fillColor('#1e40af').text(
+      `${(bien.prixAchat / 1000).toFixed(0)}k €`, 
+      230, 
+      bienY + 38,
+      { width: 130 }
+    );
+    doc.fontSize(10).fillColor('#64748b').text(
+      new Date(bien.dateAchat).toLocaleDateString('fr-FR'), 
+      230, 
+      bienY + 66,
+      { width: 130 }
+    );
+    
+    // Carte 3: Valeur actuelle
+    doc.roundedRect(390, bienY, 165, 90, 10).fill('#ffffff');
+    doc.rect(390, bienY, 165, 6).fill('#10b981');
+    doc.fontSize(10).fillColor('#64748b').text('Valeur actuelle', 405, bienY + 18, { width: 135 });
+    doc.fontSize(18).font('Helvetica-Bold').fillColor('#047857').text(
+      `${((bien.valeurActuelle || bien.prixAchat) / 1000).toFixed(0)}k €`, 
+      405, 
+      bienY + 38,
+      { width: 135 }
+    );
+    const plusValue = (bien.valeurActuelle || bien.prixAchat) - bien.prixAchat;
+    const plusValuePct = ((plusValue / bien.prixAchat) * 100).toFixed(1);
+    doc.fontSize(10).fillColor(plusValue >= 0 ? '#10b981' : '#ef4444').text(
+      `${plusValue >= 0 ? '+' : ''}${plusValuePct}%`, 
+      405, 
+      bienY + 66,
+      { width: 135 }
+    );
+    
+    bienY += 105;
+    
+    // Section: Performance financière avec fond coloré
+    doc.roundedRect(40, bienY, 515, 165, 12).fill('#1e293b');
+    doc.rect(40, bienY, 515, 8).fill('#3b82f6');
+    
+    doc.fontSize(20).font('Helvetica-Bold').fillColor('#ffffff').text('Performance Financière', 60, bienY + 25, { width: 450 });
+    
+    // Cash-flow en grand
+    doc.fontSize(13).fillColor('#cbd5e1').text('Cash-flow annuel', 60, bienY + 60, { width: 300 });
+    const cashFlowColor = cashFlow >= 0 ? '#10b981' : '#ef4444';
+    doc.fontSize(34).font('Helvetica-Bold').fillColor(cashFlowColor).text(
+      helpers.formatCurrency(cashFlow, true), 
+      60, 
+      bienY + 80,
+      { width: 300 }
+    );
+    
+    // Encadré rentabilité
+    if (bien.prixAchat > 0) {
+      const rentabilite = ((cashFlow / bien.prixAchat) * 100).toFixed(2);
+      doc.roundedRect(375, bienY + 60, 150, 90, 10).fill('#334155');
+      doc.fontSize(11).fillColor('#94a3b8').text('Rentabilité nette', 385, bienY + 75, { width: 130, align: 'center' });
+      doc.fontSize(28).font('Helvetica-Bold').fillColor(cashFlowColor).text(
+        `${rentabilite}%`, 
+        385, 
+        bienY + 105,
+        { width: 130, align: 'center' }
+      );
+    }
+    
+    bienY += 180;
+    
+    // Section: Détail des flux avec fond blanc
+    doc.roundedRect(40, bienY, 515, 230, 12).fill('#ffffff');
+    doc.rect(40, bienY, 515, 6).fill('#64748b');
+    
+    doc.fontSize(17).font('Helvetica-Bold').fillColor('#1e293b').text('Détail des Flux Annuels', 60, bienY + 22, { width: 450 });
+    
+    let lineY = bienY + 60;
+    
+    // Revenus
+    doc.circle(70, lineY + 5, 9).fill('#d1fae5');
+    doc.fontSize(14).fillColor('#10b981').text('+', 66, lineY);
+    doc.fontSize(12).font('Helvetica').fillColor('#334155').text('Loyers perçus', 95, lineY + 2, { width: 280 });
+    doc.fontSize(12).font('Helvetica-Bold').fillColor('#10b981').text(
+      helpers.formatCurrency(loyersTotal, true), 
+      390, 
+      lineY + 2, 
+      { width: 145, align: 'right' }
+    );
+    
+    lineY += 36;
+    
+    // Charges courantes
+    doc.circle(70, lineY + 5, 9).fill('#fee2e2');
+    doc.fontSize(14).fillColor('#ef4444').text('-', 67, lineY);
+    doc.fontSize(12).font('Helvetica').fillColor('#334155').text('Charges récurrentes', 95, lineY + 2, { width: 280 });
+    doc.fontSize(12).font('Helvetica-Bold').fillColor('#ef4444').text(
+      helpers.formatCurrency(chargesTotal, true).replace('+', '-'), 
+      390, 
+      lineY + 2, 
+      { width: 145, align: 'right' }
+    );
+    
+    lineY += 36;
+    
+    // Mensualités de prêt
+    doc.circle(70, lineY + 5, 9).fill('#fee2e2');
+    doc.fontSize(14).fillColor('#ef4444').text('-', 67, lineY);
+    doc.fontSize(12).font('Helvetica').fillColor('#334155').text('Mensualités de prêt', 95, lineY + 2, { width: 280 });
+    doc.fontSize(12).font('Helvetica-Bold').fillColor('#ef4444').text(
+      helpers.formatCurrency(mensualitesPrets, true).replace('+', '-'), 
+      390, 
+      lineY + 2, 
+      { width: 145, align: 'right' }
+    );
+    
+    lineY += 36;
+    
+    // Factures
+    doc.circle(70, lineY + 5, 9).fill('#fee2e2');
+    doc.fontSize(14).fillColor('#ef4444').text('-', 67, lineY);
+    doc.fontSize(12).font('Helvetica').fillColor('#334155').text('Factures et travaux', 95, lineY + 2, { width: 280 });
+    doc.fontSize(12).font('Helvetica-Bold').fillColor('#ef4444').text(
+      helpers.formatCurrency(facturesTotal + travauxTotal, true).replace('+', '-'), 
+      390, 
+      lineY + 2, 
+      { width: 145, align: 'right' }
+    );
+    
+    lineY += 40;
+    
+    // Ligne de séparation
+    doc.rect(60, lineY, 475, 2).fill('#e2e8f0');
+    
+    lineY += 15;
+    
+    // Total avec fond coloré
+    doc.roundedRect(60, lineY, 475, 48, 8).fill('#f1f5f9');
+    doc.fontSize(14).font('Helvetica-Bold').fillColor('#1e293b').text('Cash-flow net annuel', 80, lineY + 16, { width: 250 });
+    doc.fontSize(16).font('Helvetica-Bold').fillColor(cashFlowColor).text(
+      helpers.formatCurrency(cashFlow, true), 
+      380, 
+      lineY + 16, 
+      { width: 135, align: 'right' }
+    );
+    
+    // Si le bien a des baux ou des prêts, ajouter une page pour les détails
+    if (bien.baux.length > 0 || bien.prets.length > 0) {
+      doc.addPage();
+      doc.rect(0, 0, 595, 842).fill('#f8fafc');
+      
+      // En-tête page détails
+      doc.rect(0, 0, 595, 100).fill('#1e3a8a');
+      doc.fontSize(28).font('Helvetica-Bold').fillColor('#ffffff').text('Détails Financiers', 50, 35);
+      
+      let detailY = 130;
+      
+      // Section Baux
+      if (bien.baux.length > 0) {
+        doc.fontSize(20).font('Helvetica-Bold').fillColor('#1e293b').text('Baux et Locataires', 50, detailY);
+        detailY += 40;
+        
+        bien.baux.forEach((bail, index) => {
+          if (detailY > 700) {
+            doc.addPage();
+            doc.rect(0, 0, 595, 842).fill('#f8fafc');
+            detailY = 50;
+          }
+          
+          const cardHeight = 100;
+          doc.roundedRect(40, detailY, 515, cardHeight, 10).fill('#ffffff');
+          
+          const bailColor = bail.statut === 'ACTIF' ? '#10b981' : '#94a3b8';
+          doc.rect(40, detailY, 8, cardHeight).fill(bailColor);
+          
+          doc.circle(70, detailY + 28, 18).fill(bail.statut === 'ACTIF' ? '#d1fae5' : '#f1f5f9');
+          doc.fontSize(14).font('Helvetica-Bold').fillColor(bailColor).text(
+            (index + 1).toString(), 
+            63, 
+            detailY + 20
+          );
+          
+          const locataireNom = bail.locataire.typeLocataire === 'ENTREPRISE' 
+            ? bail.locataire.raisonSociale 
+            : `${bail.locataire.prenom} ${bail.locataire.nom}`;
+          
+          doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b').text(
+            locataireNom, 
+            105, 
+            detailY + 18,
+            { width: 260 }
+          );
+          
+          doc.fontSize(10).font('Helvetica').fillColor('#64748b').text(
+            `Du ${new Date(bail.dateDebut).toLocaleDateString('fr-FR')}${bail.dateFin ? ' au ' + new Date(bail.dateFin).toLocaleDateString('fr-FR') : ''}`, 
+            105, 
+            detailY + 38,
+            { width: 260 }
+          );
+          
+          doc.roundedRect(105, detailY + 60, 65, 24, 6).fill(bail.statut === 'ACTIF' ? '#d1fae5' : '#f1f5f9');
+          doc.fontSize(10).font('Helvetica-Bold').fillColor(bailColor).text(
+            bail.statut, 
+            110, 
+            detailY + 67,
+            { width: 55, align: 'center' }
+          );
+          
+          doc.roundedRect(395, detailY + 18, 135, 65, 8).fill('#f1f5f9');
+          doc.fontSize(11).fillColor('#64748b').text('Loyer HC', 400, detailY + 28, { width: 125, align: 'center' });
+          doc.fontSize(17).font('Helvetica-Bold').fillColor('#3b82f6').text(
+            `${bail.loyerHC.toLocaleString('fr-FR')} €`, 
+            400, 
+            detailY + 50,
+            { width: 125, align: 'center' }
+          );
+          
+          detailY += cardHeight + 15;
+        });
+      }
+      
+      // Section Prêts
+      if (bien.prets.length > 0) {
+        if (detailY > 400) {
+          doc.addPage();
+          doc.rect(0, 0, 595, 842).fill('#f8fafc');
+          detailY = 50;
+        } else {
+          detailY += 20;
+        }
+        
+        doc.fontSize(20).font('Helvetica-Bold').fillColor('#1e293b').text('Prêts Immobiliers', 50, detailY);
+        detailY += 40;
+        
+        bien.prets.forEach((pret, index) => {
+          if (detailY > 700) {
+            doc.addPage();
+            doc.rect(0, 0, 595, 842).fill('#f8fafc');
+            detailY = 50;
+          }
+          
+          const cardHeight = 110;
+          doc.roundedRect(40, detailY, 515, cardHeight, 10).fill('#ffffff');
+          doc.rect(40, detailY, 8, cardHeight).fill('#f97316');
+          
+          doc.circle(70, detailY + 28, 18).fill('#fed7aa');
+          doc.fontSize(14).font('Helvetica-Bold').fillColor('#c2410c').text(
+            (index + 1).toString(), 
+            63, 
+            detailY + 20
+          );
+          
+          doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b').text(
+            pret.organisme, 
+            105, 
+            detailY + 18,
+            { width: 260 }
+          );
+          
+          doc.fontSize(10).font('Helvetica').fillColor('#64748b').text(
+            `Depuis ${new Date(pret.dateDebut).toLocaleDateString('fr-FR')} • ${pret.duree} mois • Taux ${pret.taux}%`, 
+            105, 
+            detailY + 38,
+            { width: 260 }
+          );
+          
+          doc.fontSize(10).fillColor('#64748b').text('Montant emprunté', 105, detailY + 65, { width: 200 });
+          doc.fontSize(14).font('Helvetica-Bold').fillColor('#1e293b').text(
+            `${(pret.montant / 1000).toFixed(0)}k €`, 
+            105, 
+            detailY + 82,
+            { width: 200 }
+          );
+          
+          doc.roundedRect(395, detailY + 18, 135, 75, 8).fill('#fef3c7');
+          doc.fontSize(11).fillColor('#92400e').text('Mensualité', 400, detailY + 28, { width: 125, align: 'center' });
+          doc.fontSize(18).font('Helvetica-Bold').fillColor('#b45309').text(
+            `${pret.mensualite.toLocaleString('fr-FR')} €`, 
+            400, 
+            detailY + 53,
+            { width: 125, align: 'center' }
+          );
+          
+          detailY += cardHeight + 15;
+        });
+      }
+    }
+  });
+  
   // Footer sur chaque page
   const addFooter = () => {
     doc.rect(0, 792, 595, 50).fill('#1e293b');
     doc.fontSize(9).fillColor('#94a3b8').text(
-      `Dashboard SCI • Généré automatiquement le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`,
+      `Export Patrimoine SCI • Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`,
       0,
       810,
       { width: 595, align: 'center' }

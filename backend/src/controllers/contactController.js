@@ -6,6 +6,15 @@ const asyncHandler = require('../utils/asyncHandler');
 // @access  Public
 exports.getAllContacts = asyncHandler(async (req, res) => {
   const contacts = await prisma.contact.findMany({
+    include: {
+      space: {
+        select: {
+          id: true,
+          nom: true,
+          type: true
+        }
+      }
+    },
     orderBy: {
       nom: 'asc',
     },
@@ -26,6 +35,35 @@ exports.getContactsByType = asyncHandler(async (req, res) => {
 
   const contacts = await prisma.contact.findMany({
     where: { type },
+    include: {
+      space: {
+        select: {
+          id: true,
+          nom: true,
+          type: true
+        }
+      }
+    },
+    orderBy: {
+      nom: 'asc',
+    },
+  });
+
+  res.status(200).json({
+    success: true,
+    count: contacts.length,
+    data: contacts,
+  });
+});
+
+// @desc    Récupérer les contacts d'un space
+// @route   GET /api/contacts/space/:spaceId
+// @access  Public
+exports.getContactsBySpace = asyncHandler(async (req, res) => {
+  const { spaceId } = req.params;
+
+  const contacts = await prisma.contact.findMany({
+    where: { spaceId },
     orderBy: {
       nom: 'asc',
     },
@@ -46,6 +84,9 @@ exports.getContactById = asyncHandler(async (req, res) => {
 
   const contact = await prisma.contact.findUnique({
     where: { id },
+    include: {
+      space: true
+    }
   });
 
   if (!contact) {
@@ -94,15 +135,32 @@ exports.createContact = asyncHandler(async (req, res) => {
     dataToCreate.evaluation = parseInt(dataToCreate.evaluation);
   }
 
-  // Ajouter le compteId par défaut (prépare V2)
-  dataToCreate.compteId = process.env.DEFAULT_COMPTE_ID;
+  // Trouver un Space par défaut si non fourni
+  if (!dataToCreate.spaceId) {
+    const spaceExistant = await prisma.space.findFirst({
+      where: { type: 'SCI' }
+    });
+    
+    if (!spaceExistant) {
+      return res.status(400).json({
+        success: false,
+        error: 'Aucun Space SCI trouvé. Créez d\'abord une SCI.'
+      });
+    }
+    
+    dataToCreate.spaceId = spaceExistant.id;
+  }
 
   const contact = await prisma.contact.create({
     data: dataToCreate,
+    include: {
+      space: true
+    }
   });
 
   res.status(201).json({
     success: true,
+    message: 'Contact créé avec succès',
     data: contact,
   });
 });
@@ -143,6 +201,7 @@ exports.updateContact = asyncHandler(async (req, res) => {
   }
 
   // Supprimer champs non modifiables
+  delete dataToUpdate.spaceId;
   delete dataToUpdate.compteId;
   delete dataToUpdate.id;
   delete dataToUpdate.createdAt;
@@ -151,10 +210,14 @@ exports.updateContact = asyncHandler(async (req, res) => {
   const contact = await prisma.contact.update({
     where: { id },
     data: dataToUpdate,
+    include: {
+      space: true
+    }
   });
 
   res.status(200).json({
     success: true,
+    message: 'Contact mis à jour',
     data: contact,
   });
 });

@@ -1,11 +1,66 @@
 const prisma = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 
-// @desc    Récupérer toutes les charges
-// @route   GET /api/charges
-// @access  Public
+// ============================================
+// HELPERS
+// ============================================
+
+/**
+ * Vérifier qu'un bien appartient à un Space (si bienId fourni)
+ */
+async function verifyBienInSpace(bienId, spaceId) {
+  if (!bienId) return true; // Pas de bienId = OK (charge générale)
+  
+  const bien = await prisma.bien.findUnique({
+    where: { id: bienId },
+    select: { spaceId: true }
+  });
+  
+  if (!bien) {
+    throw new Error('BIEN_NOT_FOUND');
+  }
+  
+  if (bien.spaceId !== spaceId) {
+    throw new Error('BIEN_NOT_IN_SPACE');
+  }
+  
+  return true;
+}
+
+// ============================================
+// CONTROLLERS
+// ============================================
+
+// @desc    Récupérer toutes les charges d'un Space
+// @route   GET /api/charges OU GET /api/spaces/:spaceId/charges
+// @access  Auth + Space
 exports.getAllCharges = asyncHandler(async (req, res) => {
+  const spaceId = req.params.spaceId || req.query.spaceId;
+  
+  if (!spaceId) {
+    return res.status(400).json({
+      success: false,
+      error: 'Space ID requis',
+      code: 'SPACE_ID_REQUIRED'
+    });
+  }
+  
   const charges = await prisma.charge.findMany({
+    where: {
+      OR: [
+        // Charges liées à un bien du Space
+        {
+          bien: {
+            spaceId: spaceId
+          }
+        },
+        // Charges générales sans bien (bienId null)
+        // À IMPLÉMENTER : ajouter spaceId à Charge pour les charges globales
+        {
+          bienId: null
+        }
+      ]
+    },
     include: {
       bien: {
         select: {
@@ -34,9 +89,29 @@ exports.getAllCharges = asyncHandler(async (req, res) => {
 
 // @desc    Récupérer les charges d'un bien
 // @route   GET /api/charges/bien/:bienId
-// @access  Public
+// @access  Auth + Space
 exports.getChargesByBien = asyncHandler(async (req, res) => {
   const { bienId } = req.params;
+  const spaceId = req.params.spaceId || req.query.spaceId;
+  
+  // Vérifier que le bien appartient au Space
+  if (spaceId) {
+    try {
+      await verifyBienInSpace(bienId, spaceId);
+    } catch (error) {
+      if (error.message === 'BIEN_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          error: 'Bien non trouvé',
+        });
+      }
+      return res.status(403).json({
+        success: false,
+        error: 'Ce bien n\'appartient pas à cet espace',
+        code: 'BIEN_NOT_IN_SPACE'
+      });
+    }
+  }
 
   const charges = await prisma.charge.findMany({
     where: { bienId },
@@ -61,9 +136,10 @@ exports.getChargesByBien = asyncHandler(async (req, res) => {
 
 // @desc    Récupérer une charge par ID
 // @route   GET /api/charges/:id
-// @access  Public
+// @access  Auth + Space
 exports.getChargeById = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const spaceId = req.params.spaceId || req.query.spaceId;
 
   const charge = await prisma.charge.findUnique({
     where: { id },
@@ -83,6 +159,15 @@ exports.getChargeById = asyncHandler(async (req, res) => {
       error: 'Charge non trouvée',
     });
   }
+  
+  // Vérifier que la charge appartient au Space
+  if (spaceId && charge.bienId && charge.bien.spaceId !== spaceId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Cette charge n\'appartient pas à cet espace',
+      code: 'CHARGE_NOT_IN_SPACE'
+    });
+  }
 
   res.status(200).json({
     success: true,
@@ -91,10 +176,11 @@ exports.getChargeById = asyncHandler(async (req, res) => {
 });
 
 // @desc    Créer une nouvelle charge
-// @route   POST /api/charges
-// @access  Public
+// @route   POST /api/charges OU POST /api/spaces/:spaceId/charges
+// @access  Auth + Space (MEMBER minimum)
 exports.createCharge = asyncHandler(async (req, res) => {
   const data = req.body;
+  const spaceId = req.params.spaceId || req.body.spaceId;
 
   // Validation basique
   if (!data.type || !data.libelle || !data.montant || !data.frequence || !data.dateDebut) {
@@ -102,6 +188,25 @@ exports.createCharge = asyncHandler(async (req, res) => {
       success: false,
       error: 'Champs requis manquants (type, libelle, montant, frequence, dateDebut)',
     });
+  }
+  
+  // Vérifier que le bien appartient au Space (si fourni)
+  if (spaceId && data.bienId) {
+    try {
+      await verifyBienInSpace(data.bienId, spaceId);
+    } catch (error) {
+      if (error.message === 'BIEN_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          error: 'Bien non trouvé',
+        });
+      }
+      return res.status(403).json({
+        success: false,
+        error: 'Ce bien n\'appartient pas à cet espace',
+        code: 'BIEN_NOT_IN_SPACE'
+      });
+    }
   }
 
   // Convertir les données
@@ -125,12 +230,10 @@ exports.createCharge = asyncHandler(async (req, res) => {
     dataToCreate.estActive = Boolean(dataToCreate.estActive);
   }
   
-  // Convertir bienId vide en null
   if (dataToCreate.bienId === '' || dataToCreate.bienId === undefined) {
     dataToCreate.bienId = null;
   }
   
-  // Convertir notes vide en null
   if (dataToCreate.notes === '' || dataToCreate.notes === undefined) {
     dataToCreate.notes = null;
   }
@@ -162,7 +265,7 @@ exports.createCharge = asyncHandler(async (req, res) => {
     },
   });
 
-  // Synchroniser avec le bien si c'est une assurance PNO ou une taxe foncière ET si un bien est associé
+  // Synchroniser avec le bien si c'est une assurance PNO ou une taxe foncière
   if (charge.bienId && charge.type === 'ASSURANCE_PNO' && charge.estActive) {
     await prisma.bien.update({
       where: { id: charge.bienId },
@@ -183,19 +286,32 @@ exports.createCharge = asyncHandler(async (req, res) => {
 
 // @desc    Mettre à jour une charge
 // @route   PUT /api/charges/:id
-// @access  Public
+// @access  Auth + Space (MEMBER minimum)
 exports.updateCharge = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const data = req.body;
+  const spaceId = req.params.spaceId || req.body.spaceId;
 
   const chargeExistante = await prisma.charge.findUnique({
     where: { id },
+    include: {
+      bien: { select: { spaceId: true } }
+    }
   });
 
   if (!chargeExistante) {
     return res.status(404).json({
       success: false,
       error: 'Charge non trouvée',
+    });
+  }
+  
+  // Vérifier que la charge appartient au Space
+  if (spaceId && chargeExistante.bienId && chargeExistante.bien.spaceId !== spaceId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Cette charge n\'appartient pas à cet espace',
+      code: 'CHARGE_NOT_IN_SPACE'
     });
   }
 
@@ -226,12 +342,10 @@ exports.updateCharge = asyncHandler(async (req, res) => {
     dataToUpdate.estActive = Boolean(dataToUpdate.estActive);
   }
   
-  // Convertir bienId vide en null
   if (dataToUpdate.bienId === '' || dataToUpdate.bienId === undefined) {
     dataToUpdate.bienId = null;
   }
   
-  // Convertir notes vide en null
   if (dataToUpdate.notes === '') {
     dataToUpdate.notes = null;
   }
@@ -243,7 +357,7 @@ exports.updateCharge = asyncHandler(async (req, res) => {
         bienId: dataToUpdate.bienId,
         type: dataToUpdate.type,
         estActive: true,
-        id: { not: id }, // Exclure la charge actuelle
+        id: { not: id },
       },
     });
     
@@ -260,6 +374,9 @@ exports.updateCharge = asyncHandler(async (req, res) => {
   delete dataToUpdate.id;
   delete dataToUpdate.createdAt;
   delete dataToUpdate.updatedAt;
+  delete dataToUpdate.bien;
+  delete dataToUpdate.paiements;
+  delete dataToUpdate.spaceId;
 
   const charge = await prisma.charge.update({
     where: { id },
@@ -271,12 +388,12 @@ exports.updateCharge = asyncHandler(async (req, res) => {
   });
 
   // Synchroniser avec le bien si c'est une assurance PNO ou une taxe foncière
-  if (charge.type === 'ASSURANCE_PNO') {
+  if (charge.bienId && charge.type === 'ASSURANCE_PNO') {
     await prisma.bien.update({
       where: { id: charge.bienId },
       data: { assuranceMensuelle: charge.estActive ? charge.montant : null },
     });
-  } else if (charge.type === 'TAXE_FONCIERE') {
+  } else if (charge.bienId && charge.type === 'TAXE_FONCIERE') {
     await prisma.bien.update({
       where: { id: charge.bienId },
       data: { taxeFonciere: charge.estActive ? charge.montant : null },
@@ -291,12 +408,16 @@ exports.updateCharge = asyncHandler(async (req, res) => {
 
 // @desc    Supprimer une charge
 // @route   DELETE /api/charges/:id
-// @access  Public
+// @access  Auth + Space (MEMBER minimum)
 exports.deleteCharge = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const spaceId = req.params.spaceId || req.query.spaceId;
 
   const charge = await prisma.charge.findUnique({
     where: { id },
+    include: {
+      bien: { select: { spaceId: true } }
+    }
   });
 
   if (!charge) {
@@ -305,14 +426,23 @@ exports.deleteCharge = asyncHandler(async (req, res) => {
       error: 'Charge non trouvée',
     });
   }
+  
+  // Vérifier que la charge appartient au Space
+  if (spaceId && charge.bienId && charge.bien.spaceId !== spaceId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Cette charge n\'appartient pas à cet espace',
+      code: 'CHARGE_NOT_IN_SPACE'
+    });
+  }
 
   // Synchroniser avec le bien si c'est une assurance PNO ou une taxe foncière
-  if (charge.type === 'ASSURANCE_PNO') {
+  if (charge.bienId && charge.type === 'ASSURANCE_PNO') {
     await prisma.bien.update({
       where: { id: charge.bienId },
       data: { assuranceMensuelle: null },
     });
-  } else if (charge.type === 'TAXE_FONCIERE') {
+  } else if (charge.bienId && charge.type === 'TAXE_FONCIERE') {
     await prisma.bien.update({
       where: { id: charge.bienId },
       data: { taxeFonciere: null },
@@ -332,10 +462,11 @@ exports.deleteCharge = asyncHandler(async (req, res) => {
 
 // @desc    Ajouter un paiement à une charge
 // @route   POST /api/charges/:id/paiements
-// @access  Public
+// @access  Auth + Space (MEMBER minimum)
 exports.addPaiement = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { datePaiement, montant, notes } = req.body;
+  const spaceId = req.params.spaceId || req.body.spaceId;
 
   if (!datePaiement || !montant) {
     return res.status(400).json({
@@ -346,12 +477,24 @@ exports.addPaiement = asyncHandler(async (req, res) => {
 
   const charge = await prisma.charge.findUnique({
     where: { id },
+    include: {
+      bien: { select: { spaceId: true } }
+    }
   });
 
   if (!charge) {
     return res.status(404).json({
       success: false,
       error: 'Charge non trouvée',
+    });
+  }
+  
+  // Vérifier que la charge appartient au Space
+  if (spaceId && charge.bienId && charge.bien.spaceId !== spaceId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Cette charge n\'appartient pas à cet espace',
+      code: 'CHARGE_NOT_IN_SPACE'
     });
   }
 
@@ -372,7 +515,7 @@ exports.addPaiement = asyncHandler(async (req, res) => {
 
 // @desc    Supprimer un paiement
 // @route   DELETE /api/charges/paiements/:paiementId
-// @access  Public
+// @access  Auth + Space (MEMBER minimum)
 exports.deletePaiement = asyncHandler(async (req, res) => {
   const { paiementId } = req.params;
 

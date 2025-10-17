@@ -43,10 +43,12 @@ const upload = multer({
 // @route   GET /api/assemblees-generales
 // @access  Public
 exports.getAllAG = asyncHandler(async (req, res) => {
-  const compteId = process.env.DEFAULT_COMPTE_ID;
+  // Récupérer le premier Space SCI par défaut
+  const space = await prisma.space.findFirst({ where: { type: 'SCI' } });
+  const spaceId = space ? space.id : null;
   
   const ags = await prisma.assembleeGenerale.findMany({
-    where: { compteId },
+    where: spaceId ? { spaceId } : {},
     orderBy: { dateAG: 'desc' }
   });
 
@@ -87,7 +89,16 @@ exports.createAG = [
   upload.single('pv'),
   asyncHandler(async (req, res) => {
     const { type, dateAG, titre, description } = req.body;
-    const compteId = process.env.DEFAULT_COMPTE_ID;
+    
+    // Récupérer le premier Space SCI par défaut
+    const space = await prisma.space.findFirst({ where: { type: 'SCI' } });
+    if (!space) {
+      return res.status(400).json({
+        success: false,
+        error: 'Aucun espace SCI trouvé'
+      });
+    }
+    const spaceId = space.id;
 
     if (!req.file) {
       return res.status(400).json({
@@ -111,7 +122,7 @@ exports.createAG = [
         description: description || null,
         url: `/uploads/pv-ag/${req.file.filename}`,
         filename: req.file.filename,
-        compteId
+        spaceId
       }
     });
 

@@ -1,18 +1,13 @@
 const express = require('express');
 const router = express.Router();
+const { requireAuth } = require('../middleware/auth');
+const { requireSpaceAccess } = require('../middleware/spaceAccess');
 const {
   genererQuittance,
   getQuittancesByBail,
-  genererQuittancesEnLot,
-  marquerPayee,
 } = require('../controllers/quittanceController');
 
-// Routes existantes
-router.post('/generer', genererQuittance);
-router.get('/bail/:bailId', getQuittancesByBail);
-
-// Nouvelles routes (système amélioré)
-router.post('/generer-lot', genererQuittancesEnLot);
-router.patch('/:id/payer', marquerPayee);
+router.post('/generer', requireAuth, requireSpaceAccess, genererQuittance);
+router.get('/bail/:bailId', requireAuth, requireSpaceAccess, getQuittancesByBail);
 
 module.exports = router;

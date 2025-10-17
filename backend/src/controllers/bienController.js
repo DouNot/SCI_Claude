@@ -2,12 +2,18 @@ const prisma = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 
 // @desc    Récupérer tous les biens
-// @route   GET /api/biens
-// @access  Public (à sécuriser plus tard)
+// @route   GET /api/biens?spaceId=xxx
+// @access  Private
 exports.getAllBiens = asyncHandler(async (req, res) => {
+  // Le spaceId est déjà vérifié par le middleware requireSpaceAccess
+  const spaceId = req.spaceId;
+  
   const biens = await prisma.bien.findMany({
+    where: {
+      spaceId: spaceId
+    },
     include: {
-      compte: true,
+      space: true,
       photos: true,
       baux: {
         where: {
@@ -44,15 +50,19 @@ exports.getAllBiens = asyncHandler(async (req, res) => {
 });
 
 // @desc    Récupérer un bien par ID
-// @route   GET /api/biens/:id
-// @access  Public (à sécuriser plus tard)
+// @route   GET /api/biens/:id?spaceId=xxx
+// @access  Private
 exports.getBienById = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const spaceId = req.spaceId;
 
-  const bien = await prisma.bien.findUnique({
-    where: { id },
+  const bien = await prisma.bien.findFirst({
+    where: { 
+      id: id,
+      spaceId: spaceId
+    },
     include: {
-      compte: true,
+      space: true,
       photos: true,
       locataires: true,
       documents: true,
@@ -96,9 +106,10 @@ exports.getBienById = asyncHandler(async (req, res) => {
 
 // @desc    Créer un nouveau bien
 // @route   POST /api/biens
-// @access  Public (à sécuriser plus tard)
+// @access  Private
 exports.createBien = asyncHandler(async (req, res) => {
   const data = req.body;
+  const spaceId = req.spaceId; // Déjà vérifié par le middleware
 
   // Validation basique
   if (!data.adresse || !data.ville || !data.codePostal || !data.type || !data.surface || !data.prixAchat || !data.dateAchat) {
@@ -108,10 +119,10 @@ exports.createBien = asyncHandler(async (req, res) => {
     });
   }
 
-  // Nettoyer les données : convertir chaînes vides en null pour les champs numériques
+  // Nettoyer les données
   const dataToCreate = { ...data };
 
-  // Champs numériques : convertir "" en null ou en nombre
+  // Champs numériques
   const numericFields = ['surface', 'nbPieces', 'nbChambres', 'etage', 'prixAchat', 'fraisNotaire', 'valeurActuelle', 'assuranceMensuelle', 'taxeFonciere'];
   
   numericFields.forEach(field => {
@@ -122,94 +133,28 @@ exports.createBien = asyncHandler(async (req, res) => {
     }
   });
 
-  // Date : convertir en objet Date
+  // Date
   if (dataToCreate.dateAchat) {
     dataToCreate.dateAchat = new Date(dataToCreate.dateAchat);
   }
 
-  // Champs texte : convertir "" en null pour description
+  // Description
   if (dataToCreate.description === '') {
     dataToCreate.description = null;
   }
-
-  // Ajouter le compteId par défaut (prépare V2)
-  // Vérifier si le compte existe, sinon en créer un
-  let compteId = process.env.DEFAULT_COMPTE_ID;
   
-  if (!compteId) {
-    // Chercher un compte existant
-    const compteExistant = await prisma.compte.findFirst();
-    if (compteExistant) {
-      compteId = compteExistant.id;
-    } else {
-      // Créer un utilisateur et un compte par défaut
-      const user = await prisma.user.create({
-        data: {
-          email: 'admin@sci.fr',
-          password: 'admin123',
-          nom: 'Administrateur',
-          prenom: 'SCI',
-          role: 'ADMIN',
-        },
-      });
-      
-      const compte = await prisma.compte.create({
-        data: {
-          nom: 'Ma SCI',
-          type: 'SCI',
-          description: 'Compte principal de la SCI',
-          userId: user.id,
-        },
-      });
-      
-      compteId = compte.id;
-    }
-  } else {
-    // Vérifier que le compte existe
-    const compte = await prisma.compte.findUnique({ where: { id: compteId } });
-    if (!compte) {
-      // Le compte dans .env n'existe pas, chercher ou créer un autre
-      const compteExistant = await prisma.compte.findFirst();
-      if (compteExistant) {
-        compteId = compteExistant.id;
-      } else {
-        const user = await prisma.user.create({
-          data: {
-            email: 'admin@sci.fr',
-            password: 'admin123',
-            nom: 'Administrateur',
-            prenom: 'SCI',
-            role: 'ADMIN',
-          },
-        });
-        
-        const nouveauCompte = await prisma.compte.create({
-          data: {
-            nom: 'Ma SCI',
-            type: 'SCI',
-            description: 'Compte principal de la SCI',
-            userId: user.id,
-          },
-        });
-        
-        compteId = nouveauCompte.id;
-      }
-    }
-  }
-  
-  dataToCreate.compteId = compteId;
-  
-  // Le statut sera toujours LIBRE à la création (pas de bail)
+  // SpaceId vient du middleware
+  dataToCreate.spaceId = spaceId;
   dataToCreate.statut = 'LIBRE';
 
   const bien = await prisma.bien.create({
     data: dataToCreate,
     include: {
-      compte: true,
+      space: true,
     },
   });
 
-  // Créer automatiquement les charges si assuranceMensuelle ou taxeFonciere sont renseignées
+  // Créer charges automatiquement
   if (bien.assuranceMensuelle && bien.assuranceMensuelle > 0) {
     await prisma.charge.create({
       data: {
@@ -248,14 +193,18 @@ exports.createBien = asyncHandler(async (req, res) => {
 
 // @desc    Mettre à jour un bien
 // @route   PUT /api/biens/:id
-// @access  Public (à sécuriser plus tard)
+// @access  Private
 exports.updateBien = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const data = req.body;
+  const spaceId = req.spaceId;
 
-  // Vérifier que le bien existe
-  const bienExistant = await prisma.bien.findUnique({
-    where: { id },
+  // Vérifier que le bien existe et appartient au space
+  const bienExistant = await prisma.bien.findFirst({
+    where: { 
+      id: id,
+      spaceId: spaceId
+    },
   });
 
   if (!bienExistant) {
@@ -265,10 +214,9 @@ exports.updateBien = asyncHandler(async (req, res) => {
     });
   }
 
-  // Nettoyer les données : convertir chaînes vides en null pour les champs numériques
+  // Nettoyer les données
   const dataToUpdate = { ...data };
 
-  // Champs numériques : convertir "" en null
   const numericFields = ['surface', 'nbPieces', 'nbChambres', 'etage', 'prixAchat', 'fraisNotaire', 'valeurActuelle', 'assuranceMensuelle', 'taxeFonciere'];
   
   numericFields.forEach(field => {
@@ -279,17 +227,16 @@ exports.updateBien = asyncHandler(async (req, res) => {
     }
   });
 
-  // Date : convertir en objet Date si présente
   if (dataToUpdate.dateAchat && dataToUpdate.dateAchat !== '') {
     dataToUpdate.dateAchat = new Date(dataToUpdate.dateAchat);
   }
 
-  // Champs texte : convertir "" en null pour description
   if (dataToUpdate.description === '') {
     dataToUpdate.description = null;
   }
 
-  // Supprimer les champs qui ne doivent pas être mis à jour
+  // Supprimer les champs à ne pas mettre à jour
+  delete dataToUpdate.spaceId;
   delete dataToUpdate.compteId;
   delete dataToUpdate.id;
   delete dataToUpdate.createdAt;
@@ -299,13 +246,12 @@ exports.updateBien = asyncHandler(async (req, res) => {
     where: { id },
     data: dataToUpdate,
     include: {
-      compte: true,
+      space: true,
       photos: true,
     },
   });
 
-  // Synchroniser les charges avec les champs assuranceMensuelle et taxeFonciere
-  // Chercher les charges existantes de type ASSURANCE_PNO et TAXE_FONCIERE pour ce bien
+  // Synchroniser les charges
   const chargesExistantes = await prisma.charge.findMany({
     where: {
       bienId: id,
@@ -316,10 +262,9 @@ exports.updateBien = asyncHandler(async (req, res) => {
   const chargeAssurance = chargesExistantes.find(c => c.type === 'ASSURANCE_PNO');
   const chargeTaxe = chargesExistantes.find(c => c.type === 'TAXE_FONCIERE');
 
-  // Synchroniser l'assurance PNO
+  // Assurance
   if (bien.assuranceMensuelle && bien.assuranceMensuelle > 0) {
     if (chargeAssurance) {
-      // Mettre à jour la charge existante
       await prisma.charge.update({
         where: { id: chargeAssurance.id },
         data: {
@@ -328,7 +273,6 @@ exports.updateBien = asyncHandler(async (req, res) => {
         },
       });
     } else {
-      // Créer une nouvelle charge
       await prisma.charge.create({
         data: {
           type: 'ASSURANCE_PNO',
@@ -343,17 +287,15 @@ exports.updateBien = asyncHandler(async (req, res) => {
       });
     }
   } else if (chargeAssurance) {
-    // Désactiver la charge si le champ est vidé
     await prisma.charge.update({
       where: { id: chargeAssurance.id },
       data: { estActive: false },
     });
   }
 
-  // Synchroniser la taxe foncière
+  // Taxe foncière
   if (bien.taxeFonciere && bien.taxeFonciere > 0) {
     if (chargeTaxe) {
-      // Mettre à jour la charge existante
       await prisma.charge.update({
         where: { id: chargeTaxe.id },
         data: {
@@ -362,7 +304,6 @@ exports.updateBien = asyncHandler(async (req, res) => {
         },
       });
     } else {
-      // Créer une nouvelle charge
       await prisma.charge.create({
         data: {
           type: 'TAXE_FONCIERE',
@@ -377,7 +318,6 @@ exports.updateBien = asyncHandler(async (req, res) => {
       });
     }
   } else if (chargeTaxe) {
-    // Désactiver la charge si le champ est vidé
     await prisma.charge.update({
       where: { id: chargeTaxe.id },
       data: { estActive: false },
@@ -392,13 +332,17 @@ exports.updateBien = asyncHandler(async (req, res) => {
 
 // @desc    Supprimer un bien
 // @route   DELETE /api/biens/:id
-// @access  Public (à sécuriser plus tard)
+// @access  Private
 exports.deleteBien = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const spaceId = req.spaceId;
 
-  // Vérifier que le bien existe
-  const bien = await prisma.bien.findUnique({
-    where: { id },
+  // Vérifier que le bien existe et appartient au space
+  const bien = await prisma.bien.findFirst({
+    where: { 
+      id: id,
+      spaceId: spaceId
+    },
   });
 
   if (!bien) {
@@ -408,7 +352,7 @@ exports.deleteBien = asyncHandler(async (req, res) => {
     });
   }
 
-  // Supprimer le bien (cascade supprimera automatiquement les relations)
+  // Supprimer le bien
   await prisma.bien.delete({
     where: { id },
   });
@@ -419,3 +363,5 @@ exports.deleteBien = asyncHandler(async (req, res) => {
     message: 'Bien supprimé avec succès',
   });
 });
+
+module.exports = exports;

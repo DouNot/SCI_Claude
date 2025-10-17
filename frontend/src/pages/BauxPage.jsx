@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { bauxAPI, biensAPI, locatairesAPI } from '../services/api';
-import { FileText, Building2, User, Edit, Trash2, Calendar, Euro } from 'lucide-react';
+import { FileText, Building2, User, Edit, Trash2, Calendar, Euro, Mail } from 'lucide-react';
 import BailForm from '../components/BailForm';
 import QuittanceForm from '../components/QuittanceForm';
+import EnvoyerQuittancesLotModal from '../components/EnvoyerQuittancesLotModal';
 
 function BauxPage() {
   const [baux, setBaux] = useState([]);
@@ -12,6 +13,7 @@ function BauxPage() {
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [showQuittanceForm, setShowQuittanceForm] = useState(false);
+  const [showEmailLotModal, setShowEmailLotModal] = useState(false);
   const [bailToEdit, setBailToEdit] = useState(null);
   const [bailToDelete, setBailToDelete] = useState(null);
 
@@ -129,6 +131,13 @@ function BauxPage() {
               <p className="text-gray-600 mt-1">{baux.length} bail/baux</p>
             </div>
             <div className="flex gap-3">
+              <button 
+                onClick={() => setShowEmailLotModal(true)}
+                className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition font-semibold flex items-center gap-2"
+              >
+                <Mail className="h-5 w-5" />
+                Envoyer par email
+              </button>
               <button 
                 onClick={() => setShowQuittanceForm(true)}
                 className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-semibold"
@@ -339,6 +348,18 @@ function BauxPage() {
         <QuittanceForm
           onClose={() => setShowQuittanceForm(false)}
           bauxList={baux}
+        />
+      )}
+
+      {/* Modal Envoi Email Lot */}
+      {showEmailLotModal && (
+        <EnvoyerQuittancesLotModal
+          mois={new Date().getMonth() + 1}
+          annee={new Date().getFullYear()}
+          onClose={() => setShowEmailLotModal(false)}
+          onSuccess={() => {
+            setShowEmailLotModal(false);
+          }}
         />
       )}
     </div>

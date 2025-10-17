@@ -72,16 +72,16 @@ exports.createNotification = asyncHandler(async (req, res) => {
     dataToCreate.dateEcheance = new Date(dataToCreate.dateEcheance);
   }
 
-  // Ajouter le compteId par défaut
-  if (!dataToCreate.compteId) {
-    const compte = await prisma.compte.findFirst();
-    if (!compte) {
+  // Ajouter le spaceId par défaut
+  if (!dataToCreate.spaceId) {
+    const space = await prisma.space.findFirst({ where: { type: 'SCI' } });
+    if (!space) {
       return res.status(400).json({
         success: false,
-        error: 'Aucun compte disponible',
+        error: 'Aucun espace disponible',
       });
     }
-    dataToCreate.compteId = compte.id;
+    dataToCreate.spaceId = space.id;
   }
 
   const notification = await prisma.notification.create({
@@ -182,14 +182,14 @@ exports.supprimerToutesLues = asyncHandler(async (req, res) => {
 // @desc    Générer les notifications automatiques
 // @route   POST /api/notifications/generer
 // @access  Public
-exports.genererNotificationsAutomatiques = asyncHandler(async (req, res) => {
+exports.genererNotifications = asyncHandler(async (req, res) => {
   const notificationsCreees = [];
-  const compte = await prisma.compte.findFirst();
+  const space = await prisma.space.findFirst({ where: { type: 'SCI' } });
   
-  if (!compte) {
+  if (!space) {
     return res.status(400).json({
       success: false,
-      error: 'Aucun compte disponible',
+      error: 'Aucun espace disponible',
     });
   }
 
@@ -236,7 +236,7 @@ exports.genererNotificationsAutomatiques = asyncHandler(async (req, res) => {
           dateEcheance: bail.dateFin,
           lienType: 'Bail',
           lienId: bail.id,
-          compteId: compte.id,
+          spaceId: space.id,
         },
       });
       notificationsCreees.push(notification);
@@ -278,7 +278,7 @@ exports.genererNotificationsAutomatiques = asyncHandler(async (req, res) => {
           dateEcheance: evenement.dateEcheance,
           lienType: 'EvenementFiscal',
           lienId: evenement.id,
-          compteId: compte.id,
+          spaceId: space.id,
         },
       });
       notificationsCreees.push(notification);
@@ -320,7 +320,7 @@ exports.genererNotificationsAutomatiques = asyncHandler(async (req, res) => {
           dateEcheance: travail.dateDebut,
           lienType: 'Travaux',
           lienId: travail.id,
-          compteId: compte.id,
+          spaceId: space.id,
         },
       });
       notificationsCreees.push(notification);

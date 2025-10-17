@@ -1,21 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const upload = require('../config/upload');
+const { requireAuth } = require('../middleware/auth');
+const { requireSpaceAccess } = require('../middleware/spaceAccess');
 const {
   getAllFactures,
-  getFacturesByBien,
   getFactureById,
+  getFacturesByBien,
   createFacture,
   updateFacture,
   deleteFacture,
 } = require('../controllers/factureController');
 
-// Routes
-router.get('/', getAllFactures);
-router.get('/bien/:bienId', getFacturesByBien);
-router.get('/:id', getFactureById);
-router.post('/', upload.single('fichier'), createFacture);
-router.put('/:id', updateFacture);
-router.delete('/:id', deleteFacture);
+router.get('/', requireAuth, requireSpaceAccess, getAllFactures);
+router.get('/bien/:bienId', requireAuth, requireSpaceAccess, getFacturesByBien);
+router.get('/:id', requireAuth, requireSpaceAccess, getFactureById);
+router.post('/', requireAuth, requireSpaceAccess, createFacture);
+router.put('/:id', requireAuth, requireSpaceAccess, updateFacture);
+router.delete('/:id', requireAuth, requireSpaceAccess, deleteFacture);
 
 module.exports = router;

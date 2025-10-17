@@ -1,11 +1,17 @@
 const prisma = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 
-// @desc    Récupérer tous les locataires
+// @desc    Récupérer tous les locataires d'un Space
 // @route   GET /api/locataires
-// @access  Public
+// @access  Auth + Space
 exports.getAllLocataires = asyncHandler(async (req, res) => {
+  const spaceId = req.spaceId; // Du middleware
+  
+  // Récupérer tous les locataires du Space
   const locataires = await prisma.locataire.findMany({
+    where: {
+      spaceId: spaceId
+    },
     include: {
       bien: {
         select: {
@@ -29,15 +35,29 @@ exports.getAllLocataires = asyncHandler(async (req, res) => {
 
 // @desc    Récupérer un locataire par ID
 // @route   GET /api/locataires/:id
-// @access  Public
+// @access  Auth + Space
 exports.getLocataireById = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const spaceId = req.spaceId; // Du middleware
 
-  const locataire = await prisma.locataire.findUnique({
-    where: { id },
+  const locataire = await prisma.locataire.findFirst({
+    where: { 
+      id,
+      spaceId: spaceId // Vérifier que le locataire appartient au Space
+    },
     include: {
       bien: true,
-      baux: true,
+      baux: {
+        include: {
+          bien: {
+            select: {
+              id: true,
+              adresse: true,
+              ville: true,
+            }
+          }
+        }
+      },
     },
   });
 
@@ -56,9 +76,13 @@ exports.getLocataireById = asyncHandler(async (req, res) => {
 
 // @desc    Créer un nouveau locataire
 // @route   POST /api/locataires
-// @access  Public
+// @access  Auth + Space
 exports.createLocataire = asyncHandler(async (req, res) => {
   const data = req.body;
+  const spaceId = req.spaceId; // Du middleware
+
+  console.log('📝 Création locataire - spaceId:', spaceId);
+  console.log('📝 Données reçues:', data);
 
   // Validation basique
   if (!data.nom || !data.prenom || !data.email) {
@@ -67,20 +91,29 @@ exports.createLocataire = asyncHandler(async (req, res) => {
       error: 'Nom, prénom et email sont requis',
     });
   }
-
-  // Validation spécifique pour les entreprises
-  if (data.typeLocataire === 'ENTREPRISE' && !data.raisonSociale) {
-    return res.status(400).json({
-      success: false,
-      error: 'Raison sociale requise pour une entreprise',
+  
+  // Vérifier que le bien appartient au Space (si fourni)
+  if (data.bienId) {
+    const bien = await prisma.bien.findFirst({
+      where: { 
+        id: data.bienId,
+        spaceId: spaceId
+      }
     });
+    
+    if (!bien) {
+      return res.status(404).json({
+        success: false,
+        error: 'Bien non trouvé dans cet espace',
+      });
+    }
   }
 
   // Nettoyer les données
   const dataToCreate = { ...data };
 
   // Convertir chaînes vides en null
-  if (dataToCreate.typeLocataire === '') dataToCreate.typeLocataire = 'ENTREPRISE';
+  if (dataToCreate.typeLocataire === '') dataToCreate.typeLocataire = 'PARTICULIER';
   if (dataToCreate.raisonSociale === '') dataToCreate.raisonSociale = null;
   if (dataToCreate.siret === '') dataToCreate.siret = null;
   if (dataToCreate.formeJuridique === '') dataToCreate.formeJuridique = null;
@@ -110,6 +143,11 @@ exports.createLocataire = asyncHandler(async (req, res) => {
     dataToCreate.dateSortie = new Date(dataToCreate.dateSortie);
   }
   if (dataToCreate.bienId === '') dataToCreate.bienId = null;
+  
+  // IMPORTANT : Ajouter le spaceId
+  dataToCreate.spaceId = spaceId;
+
+  console.log('📝 Données nettoyées:', dataToCreate);
 
   const locataire = await prisma.locataire.create({
     data: dataToCreate,
@@ -117,6 +155,8 @@ exports.createLocataire = asyncHandler(async (req, res) => {
       bien: true,
     },
   });
+
+  console.log('✅ Locataire créé:', locataire.id);
 
   res.status(201).json({
     success: true,
@@ -126,14 +166,18 @@ exports.createLocataire = asyncHandler(async (req, res) => {
 
 // @desc    Mettre à jour un locataire
 // @route   PUT /api/locataires/:id
-// @access  Public
+// @access  Auth + Space
 exports.updateLocataire = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const data = req.body;
+  const spaceId = req.spaceId; // Du middleware
 
-  // Vérifier que le locataire existe
-  const locataireExistant = await prisma.locataire.findUnique({
-    where: { id },
+  // Vérifier que le locataire existe et appartient au space
+  const locataireExistant = await prisma.locataire.findFirst({
+    where: { 
+      id,
+      spaceId: spaceId
+    }
   });
 
   if (!locataireExistant) {
@@ -141,6 +185,23 @@ exports.updateLocataire = asyncHandler(async (req, res) => {
       success: false,
       error: 'Locataire non trouvé',
     });
+  }
+  
+  // Si on change le bienId, vérifier qu'il appartient au Space
+  if (data.bienId && data.bienId !== locataireExistant.bienId) {
+    const bien = await prisma.bien.findFirst({
+      where: { 
+        id: data.bienId,
+        spaceId: spaceId
+      }
+    });
+    
+    if (!bien) {
+      return res.status(404).json({
+        success: false,
+        error: 'Bien non trouvé dans cet espace',
+      });
+    }
   }
 
   // Nettoyer les données
@@ -177,10 +238,13 @@ exports.updateLocataire = asyncHandler(async (req, res) => {
   }
   if (dataToUpdate.bienId === '') dataToUpdate.bienId = null;
 
-  // Supprimer les champs qui ne doivent pas être mis à jour
   delete dataToUpdate.id;
   delete dataToUpdate.createdAt;
   delete dataToUpdate.updatedAt;
+  delete dataToUpdate.bien;
+  delete dataToUpdate.baux;
+  delete dataToUpdate.spaceId; // Ne pas changer le spaceId
+  delete dataToUpdate.space; // Supprimer la relation si présente
 
   const locataire = await prisma.locataire.update({
     where: { id },
@@ -198,13 +262,17 @@ exports.updateLocataire = asyncHandler(async (req, res) => {
 
 // @desc    Supprimer un locataire
 // @route   DELETE /api/locataires/:id
-// @access  Public
+// @access  Auth + Space
 exports.deleteLocataire = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const spaceId = req.spaceId; // Du middleware
 
-  // Vérifier que le locataire existe
-  const locataire = await prisma.locataire.findUnique({
-    where: { id },
+  // Vérifier que le locataire existe et appartient au space
+  const locataire = await prisma.locataire.findFirst({
+    where: { 
+      id,
+      spaceId: spaceId
+    }
   });
 
   if (!locataire) {
@@ -224,3 +292,5 @@ exports.deleteLocataire = asyncHandler(async (req, res) => {
     message: 'Locataire supprimé avec succès',
   });
 });
+
+module.exports = exports;

@@ -1,0 +1,451 @@
+// NOUVEAU SCHEMA - Modèle Space-based
+// Pour migrer : renommer schema.prisma en schema-old.prisma
+// Puis renommer schema-new.prisma en schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USERS & AUTH
+// ============================================
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  nom           String?
+  prenom        String?
+  emailVerified Boolean   @default(false) @map("email_verified")
+  lastSpaceId   String?   @map("last_space_id")
+  
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  spaceMembers  SpaceMember[]
+  associes      Associe[]
+  invitationsSent SpaceMember[] @relation("InvitedBy")
+  
+  @@map("users")
+}
+
+// ============================================
+// SPACES (Workspaces)
+// ============================================
+
+model Space {
+  id          String       @id @default(uuid())
+  type        String       // PERSONAL ou SCI
+  nom         String
+  slug        String       @unique
+  
+  // SCI specific fields (nullable si PERSONAL)
+  siret       String?      @unique
+  capitalSocial Float?     @map("capital_social")
+  formeJuridique String?   @default("SCI") @map("forme_juridique")
+  dateCreation DateTime?   @map("date_creation")
+  dateCloture String?      @map("date_cloture") // "31/12"
+  regimeFiscal String?     @map("regime_fiscal") // "IR" ou "IS"
+  adresse     String?
+  objetSocial String?      @map("objet_social")
+  
+  // Metadata
+  statut      String       @default("DRAFT") // DRAFT, ACTIVE, ARCHIVED
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  
+  // Relations
+  members     SpaceMember[]
+  associes    Associe[]
+  biens       Bien[]
+  contacts    Contact[]
+  assembleesGenerales AssembleeGenerale[]
+  notifications Notification[]
+  
+  @@map("spaces")
+}
+
+// ============================================
+// SPACE MEMBERS (Access Control)
+// ============================================
+
+model SpaceMember {
+  id        String             @id @default(uuid())
+  spaceId   String             @map("space_id")
+  userId    String             @map("user_id")
+  role      String             // OWNER, MANAGER, MEMBER, VIEWER, COMPTABLE
+  statut    String             @default("PENDING") // PENDING, ACTIVE, SUSPENDED
+  
+  // Invitation
+  invitationToken      String?   @unique @map("invitation_token")
+  invitationSentAt     DateTime? @map("invitation_sent_at")
+  invitationAcceptedAt DateTime? @map("invitation_accepted_at")
+  invitedBy            String?   @map("invited_by")
+  
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  space     Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inviter   User?     @relation("InvitedBy", fields: [invitedBy], references: [id])
+  
+  @@unique([spaceId, userId])
+  @@index([invitationToken])
+  @@map("space_members")
+}
+
+// ============================================
+// ASSOCIÉS (Cap Table)
+// ============================================
+
+model Associe {
+  id        String         @id @default(uuid())
+  spaceId   String         @map("space_id")
+  userId    String?        @map("user_id") // NULL si associé externe
+  
+  // Identité (si userId = NULL)
+  nom       String
+  prenom    String
+  email     String?
+  telephone String?
+  type      String         @default("PERSONNE_PHYSIQUE") // PERSONNE_PHYSIQUE, PERSONNE_MORALE
+  
+  // Participation
+  nombreParts    Int         @map("nombre_parts")
+  pourcentage    Float       // Auto-calculé
+  valeurNominale Float?      @map("valeur_nominale")
+  
+  // Compte Courant Associé
+  soldeCCA  Float          @default(0) @map("solde_cca")
+  
+  // Dates
+  dateEntree DateTime      @map("date_entree")
+  dateSortie DateTime?     @map("date_sortie")
+  statut     String        @default("ACTIF") // ACTIF, SORTI
+  
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+  
+  // Relations
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@index([spaceId, statut])
+  @@map("associes")
+}
+
+// ============================================
+// BIENS IMMOBILIERS
+// ============================================
+
+model Bien {
+  id             String      @id @default(uuid())
+  adresse        String
+  ville          String
+  codePostal     String
+  pays           String      @default("France")
+  type           String
+  surface        Float
+  nbPieces       Int?
+  nbChambres     Int?
+  etage          Int?
+  prixAchat      Float
+  fraisNotaire   Float?
+  dateAchat      DateTime
+  valeurActuelle Float?
+  statut         String      @default("LIBRE")
+  description    String?
+  assuranceMensuelle Float?
+  taxeFonciere   Float?
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  
+  spaceId        String      @map("space_id")
+  
+  // Relations
+  space          Space       @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  baux           Bail[]
+  documents      Document[]
+  factures       Facture[]
+  locataires     Locataire[]
+  photos         Photo[]
+  prets          Pret[]
+  travaux        Travaux[]
+  evenementsFiscaux EvenementFiscal[]
+  charges        Charge[]
+  
+  @@map("biens")
+}
+
+// Tous les autres modèles restent identiques
+// Photo, Document, Pret, Locataire, Bail, Quittance, Facture, Travaux, etc.
+
+model Photo {
+  id        String   @id @default(uuid())
+  url       String
+  filename  String
+  isPrimary Boolean  @default(false)
+  ordre     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  bienId    String   @map("bien_id")
+  bien      Bien     @relation(fields: [bienId], references: [id], onDelete: Cascade)
+  
+  @@map("photos")
+}
+
+model Document {
+  id             String    @id @default(uuid())
+  nom            String
+  type           String
+  url            String
+  filename       String
+  dateDocument   DateTime? @map("date_document")
+  dateExpiration DateTime? @map("date_expiration")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  bienId         String    @map("bien_id")
+  bien           Bien      @relation(fields: [bienId], references: [id], onDelete: Cascade)
+  
+  @@map("documents")
+}
+
+model Pret {
+  id            String   @id @default(uuid())
+  montant       Float
+  taux          Float
+  duree         Int
+  mensualite    Float
+  tauxAssurance Float?   @map("taux_assurance")
+  dateDebut     DateTime @map("date_debut")
+  organisme     String
+  numeroContrat String?  @map("numero_contrat")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  bienId        String   @map("bien_id")
+  bien          Bien     @relation(fields: [bienId], references: [id], onDelete: Cascade)
+  
+  @@map("prets")
+}
+
+model Locataire {
+  id             String    @id @default(uuid())
+  typeLocataire  String    @default("ENTREPRISE") @map("type_locataire")
+  raisonSociale  String?   @map("raison_sociale")
+  siret          String?
+  formeJuridique String?   @map("forme_juridique")
+  capitalSocial  Float?    @map("capital_social")
+  nom            String
+  prenom         String
+  email          String
+  telephone      String?
+  adresse        String?
+  ville          String?
+  codePostal     String?   @map("code_postal")
+  dateNaissance  DateTime? @map("date_naissance")
+  profession     String?
+  dateEntree     DateTime? @map("date_entree")
+  dateSortie     DateTime? @map("date_sortie")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  bienId         String?   @map("bien_id")
+  baux           Bail[]
+  bien           Bien?     @relation(fields: [bienId], references: [id])
+  
+  @@map("locataires")
+}
+
+model Bail {
+  id            String      @id @default(uuid())
+  typeBail      String      @map("type_bail")
+  dateDebut     DateTime    @map("date_debut")
+  dateFin       DateTime?   @map("date_fin")
+  duree         Int
+  loyerHC       Float       @map("loyer_hc")
+  charges       Float?
+  depotGarantie Float?      @map("depot_garantie")
+  indexRevision String?     @map("index_revision")
+  refactureTaxeFonciere Boolean @default(false) @map("refacture_taxe_fonciere")
+  montantTaxeFonciere Float?   @map("montant_taxe_fonciere")
+  statut        String      @default("ACTIF")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  bienId        String      @map("bien_id")
+  locataireId   String      @map("locataire_id")
+  locataire     Locataire   @relation(fields: [locataireId], references: [id], onDelete: Cascade)
+  bien          Bien        @relation(fields: [bienId], references: [id], onDelete: Cascade)
+  quittances    Quittance[]
+  
+  @@map("baux")
+}
+
+model Quittance {
+  id             String    @id @default(uuid())
+  numeroQuittance String?  @unique @map("numero_quittance")
+  mois           Int
+  annee          Int
+  montantLoyer   Float     @map("montant_loyer")
+  montantCharges Float?    @map("montant_charges")
+  montantTotal   Float     @map("montant_total")
+  datePaiement   DateTime? @map("date_paiement")
+  estPaye        Boolean   @default(false) @map("est_paye")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  bailId         String    @map("bail_id")
+  bail           Bail      @relation(fields: [bailId], references: [id], onDelete: Cascade)
+
+  @@index([numeroQuittance])
+  @@map("quittances")
+}
+
+model Facture {
+  id              String    @id @default(uuid())
+  numero          String?
+  fournisseur     String
+  montantTTC      Float     @map("montant_ttc")
+  montantHT       Float?    @map("montant_ht")
+  tva             Float?
+  dateFacture     DateTime  @map("date_facture")
+  datePaiement    DateTime? @map("date_paiement")
+  categorie       String
+  sousCategorie   String?   @map("sous_categorie")
+  description     String?
+  url             String?
+  filename        String?
+  estPaye         Boolean   @default(false) @map("est_paye")
+  estDeductible   Boolean   @default(true) @map("est_deductible")
+  adresseDetectee String?   @map("adresse_detectee")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  bienId          String    @map("bien_id")
+  bien            Bien      @relation(fields: [bienId], references: [id], onDelete: Cascade)
+  
+  @@map("factures")
+}
+
+model Travaux {
+  id          String    @id @default(uuid())
+  titre       String
+  description String?
+  type        String
+  categorie   String?
+  dateDebut   DateTime  @map("date_debut")
+  dateFin     DateTime? @map("date_fin")
+  coutEstime  Float     @map("cout_estime")
+  coutReel    Float?    @map("cout_reel")
+  artisan     String?
+  telephone   String?
+  etat        String    @default("PLANIFIE")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  bienId      String    @map("bien_id")
+  bien        Bien      @relation(fields: [bienId], references: [id], onDelete: Cascade)
+  
+  @@map("travaux")
+}
+
+model Contact {
+  id         String   @id @default(uuid())
+  nom        String
+  prenom     String?
+  entreprise String?
+  type       String
+  email      String?
+  telephone  String?
+  adresse    String?
+  siteWeb    String?  @map("site_web")
+  notes      String?
+  evaluation Int?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  spaceId    String   @map("space_id")
+  space      Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  
+  @@map("contacts")
+}
+
+model AssembleeGenerale {
+  id           String    @id @default(uuid())
+  type         String
+  dateAG       DateTime  @map("date_ag")
+  titre        String?
+  description  String?
+  url          String
+  filename     String
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  spaceId      String    @map("space_id")
+  space        Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  
+  @@map("assemblees_generales")
+}
+
+model EvenementFiscal {
+  id            String    @id @default(uuid())
+  type          String
+  dateEcheance  DateTime  @map("date_echeance")
+  montant       Float?
+  datePaiement  DateTime? @map("date_paiement")
+  estPaye       Boolean   @default(false) @map("est_paye")
+  notes         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  bienId        String    @map("bien_id")
+  bien          Bien      @relation(fields: [bienId], references: [id], onDelete: Cascade)
+  
+  @@map("evenements_fiscaux")
+}
+
+model Charge {
+  id          String    @id @default(uuid())
+  type        String
+  libelle     String
+  montant     Float
+  frequence   String
+  dateDebut   DateTime  @map("date_debut")
+  dateFin     DateTime? @map("date_fin")
+  jourPaiement Int?     @map("jour_paiement")
+  estActive   Boolean   @default(true) @map("est_active")
+  notes       String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  bienId      String?   @map("bien_id")
+  bien        Bien?     @relation(fields: [bienId], references: [id], onDelete: Cascade)
+  paiements   PaiementCharge[]
+  
+  @@map("charges")
+}
+
+model PaiementCharge {
+  id            String    @id @default(uuid())
+  datePaiement  DateTime  @map("date_paiement")
+  montant       Float
+  notes         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  chargeId      String    @map("charge_id")
+  charge        Charge    @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+  
+  @@map("paiements_charges")
+}
+
+model Notification {
+  id          String    @id @default(uuid())
+  type        String
+  titre       String
+  message     String
+  priorite    String    @default("NORMALE")
+  statut      String    @default("NON_LUE")
+  dateEcheance DateTime? @map("date_echeance")
+  lienType    String?   @map("lien_type")
+  lienId      String?   @map("lien_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  spaceId     String    @map("space_id")
+  space       Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  
+  @@map("notifications")
+}

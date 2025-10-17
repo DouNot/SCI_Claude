@@ -1,24 +1,21 @@
 const express = require('express');
 const router = express.Router();
+const { requireAuth } = require('../middleware/auth');
+const { requireSpaceAccess } = require('../middleware/spaceAccess');
 const {
   getAllContacts,
-  getContactsByType,
   getContactById,
+  getContactsByType,
   createContact,
   updateContact,
   deleteContact,
 } = require('../controllers/contactController');
 
-router.route('/')
-  .get(getAllContacts)
-  .post(createContact);
-
-router.route('/type/:type')
-  .get(getContactsByType);
-
-router.route('/:id')
-  .get(getContactById)
-  .put(updateContact)
-  .delete(deleteContact);
+router.get('/', requireAuth, requireSpaceAccess, getAllContacts);
+router.get('/type/:type', requireAuth, requireSpaceAccess, getContactsByType);
+router.get('/:id', requireAuth, requireSpaceAccess, getContactById);
+router.post('/', requireAuth, requireSpaceAccess, createContact);
+router.put('/:id', requireAuth, requireSpaceAccess, updateContact);
+router.delete('/:id', requireAuth, requireSpaceAccess, deleteContact);
 
 module.exports = router;

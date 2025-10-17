@@ -1,13 +1,107 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
+// Instance axios principale
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Intercepteur de requête - Ajouter token ET spaceId automatiquement
+api.interceptors.request.use(
+  (config) => {
+    // 1. Récupérer le token depuis localStorage
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.warn('⚠️ Pas de token dans localStorage - la requête risque d\'échouer');
+    }
+
+    // 2. Récupérer le spaceId actuel depuis localStorage
+    const currentSpaceId = localStorage.getItem('currentSpaceId');
+    
+    // 3. Ajouter spaceId seulement si disponible
+    if (currentSpaceId) {
+      // Ajouter spaceId dans les query params pour les GET
+      if (config.method === 'get') {
+        config.params = {
+          ...config.params,
+          spaceId: currentSpaceId,
+        };
+      }
+      
+      // Ajouter spaceId dans le body pour POST/PUT/PATCH
+      if (['post', 'put', 'patch'].includes(config.method)) {
+        // Ne pas ajouter si c'est du FormData (on l'ajoutera manuellement dans les services)
+        if (!(config.data instanceof FormData)) {
+          config.data = {
+            ...config.data,
+            spaceId: currentSpaceId,
+          };
+        }
+      }
+      
+      console.log(`📤 ${config.method.toUpperCase()} ${config.url} [spaceId: ${currentSpaceId.substring(0, 8)}...]`);
+    } else {
+      console.warn(`⚠️ ${config.method.toUpperCase()} ${config.url} - AUCUN spaceId dans localStorage !`);
+      console.warn('Cette requête risque de renvoyer une erreur 403 (Forbidden)');
+    }
+
+    return config;
+  },
+  (error) => {
+    console.error('❌ Erreur dans l\'intercepteur de requête:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Intercepteur de réponse - Gérer les erreurs 401
+api.interceptors.response.use(
+  (response) => {
+    // Log des réponses réussies (optionnel, peut être retiré en prod)
+    // console.log(`✅ ${response.config.method.toUpperCase()} ${response.config.url} → ${response.status}`);
+    return response;
+  },
+  (error) => {
+    const status = error.response?.status;
+    const method = error.config?.method?.toUpperCase();
+    const url = error.config?.url;
+    
+    console.error(`❌ ${method} ${url} → ${status}`);
+    
+    // Si 401 (non autorisé), déconnecter et rediriger vers login
+    if (status === 401) {
+      console.error('🔒 Erreur 401 - Token invalide ou expiré - Déconnexion...');
+      localStorage.removeItem('token');
+      localStorage.removeItem('currentSpaceId');
+      window.location.href = '/login';
+    }
+    
+    // Si 403 (accès refusé au Space)
+    if (status === 403) {
+      console.error('🚫 Erreur 403 - Accès refusé au Space');
+      console.error('Vérifiez que le currentSpaceId existe et que l\'utilisateur y a accès');
+      console.error('currentSpaceId actuel:', localStorage.getItem('currentSpaceId'));
+    }
+    
+    // Si 400 (Bad Request) et message sur spaceId
+    if (status === 400 && error.response?.data?.code === 'SPACE_ID_REQUIRED') {
+      console.error('⚠️ Erreur 400 - spaceId manquant dans la requête');
+      console.error('Vérifiez que le currentSpaceId est bien dans localStorage');
+      console.error('currentSpaceId actuel:', localStorage.getItem('currentSpaceId'));
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+// ============================================
+// API SERVICES
+// ============================================
 
 export const biensAPI = {
   getAll: async () => {
@@ -42,7 +136,9 @@ export const locatairesAPI = {
     return response.data;
   },
   create: async (locataireData) => {
+    console.log('📝 Création d\'un locataire:', locataireData);
     const response = await api.post('/locataires', locataireData);
+    console.log('✅ Locataire créé:', response.data);
     return response.data;
   },
   update: async (id, locataireData) => {
@@ -115,6 +211,11 @@ export const facturesAPI = {
         formData.append(key, factureData[key]);
       }
     });
+    // Ajouter manuellement le spaceId pour FormData
+    const currentSpaceId = localStorage.getItem('currentSpaceId');
+    if (currentSpaceId) {
+      formData.append('spaceId', currentSpaceId);
+    }
     const response = await api.post('/factures', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -215,11 +316,8 @@ export const pretsAPI = {
 
 export const associesAPI = {
   getAll: async () => {
-    const response = await api.get('/associes');
-    return response.data;
-  },
-  getByCompte: async (compteId) => {
-    const response = await api.get(`/associes/compte/${compteId}`);
+    const currentSpaceId = localStorage.getItem('currentSpaceId');
+    const response = await api.get(`/associes/space/${currentSpaceId}`);
     return response.data;
   },
   getById: async (id) => {
@@ -260,6 +358,11 @@ export const documentsAPI = {
         formData.append(key, documentData[key]);
       }
     });
+    // Ajouter spaceId pour FormData
+    const currentSpaceId = localStorage.getItem('currentSpaceId');
+    if (currentSpaceId) {
+      formData.append('spaceId', currentSpaceId);
+    }
     const response = await api.post('/documents', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -345,6 +448,12 @@ export const assembleesAPI = {
     if (agData.titre) formData.append('titre', agData.titre);
     if (agData.description) formData.append('description', agData.description);
     if (agData.pv) formData.append('pv', agData.pv);
+    
+    // Ajouter spaceId pour FormData
+    const currentSpaceId = localStorage.getItem('currentSpaceId');
+    if (currentSpaceId) {
+      formData.append('spaceId', currentSpaceId);
+    }
     
     const response = await api.post('/assemblees-generales', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

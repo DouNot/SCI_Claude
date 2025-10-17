@@ -1,6 +1,10 @@
 const prisma = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 
+// ============================================
+// HELPERS - CALCULS
+// ============================================
+
 // Fonction utilitaire : calculer le tableau d'amortissement
 const calculerAmortissement = (montant, tauxAnnuel, dureeEnMois, tauxAssurance = 0, dateDebut) => {
   const tauxMensuel = tauxAnnuel / 100 / 12;
@@ -52,11 +56,50 @@ const calculerAmortissement = (montant, tauxAnnuel, dureeEnMois, tauxAssurance =
   };
 };
 
-// @desc    Récupérer tous les prêts
-// @route   GET /api/prets
-// @access  Public
+/**
+ * Vérifier qu'un bien appartient à un Space
+ */
+async function verifyBienInSpace(bienId, spaceId) {
+  const bien = await prisma.bien.findUnique({
+    where: { id: bienId },
+    select: { spaceId: true }
+  });
+  
+  if (!bien) {
+    throw new Error('BIEN_NOT_FOUND');
+  }
+  
+  if (bien.spaceId !== spaceId) {
+    throw new Error('BIEN_NOT_IN_SPACE');
+  }
+  
+  return true;
+}
+
+// ============================================
+// CONTROLLERS
+// ============================================
+
+// @desc    Récupérer tous les prêts d'un Space
+// @route   GET /api/prets OU GET /api/spaces/:spaceId/prets
+// @access  Auth + Space
 exports.getAllPrets = asyncHandler(async (req, res) => {
+  const spaceId = req.params.spaceId || req.query.spaceId;
+  
+  if (!spaceId) {
+    return res.status(400).json({
+      success: false,
+      error: 'Space ID requis',
+      code: 'SPACE_ID_REQUIRED'
+    });
+  }
+  
   const prets = await prisma.pret.findMany({
+    where: {
+      bien: {
+        spaceId: spaceId
+      }
+    },
     include: {
       bien: {
         select: {
@@ -80,9 +123,29 @@ exports.getAllPrets = asyncHandler(async (req, res) => {
 
 // @desc    Récupérer les prêts d'un bien
 // @route   GET /api/prets/bien/:bienId
-// @access  Public
+// @access  Auth + Space
 exports.getPretsByBien = asyncHandler(async (req, res) => {
   const { bienId } = req.params;
+  const spaceId = req.params.spaceId || req.query.spaceId;
+  
+  // Vérifier que le bien appartient au Space
+  if (spaceId) {
+    try {
+      await verifyBienInSpace(bienId, spaceId);
+    } catch (error) {
+      if (error.message === 'BIEN_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          error: 'Bien non trouvé',
+        });
+      }
+      return res.status(403).json({
+        success: false,
+        error: 'Ce bien n\'appartient pas à cet espace',
+        code: 'BIEN_NOT_IN_SPACE'
+      });
+    }
+  }
 
   const prets = await prisma.pret.findMany({
     where: { bienId },
@@ -100,9 +163,10 @@ exports.getPretsByBien = asyncHandler(async (req, res) => {
 
 // @desc    Récupérer un prêt par ID avec tableau d'amortissement
 // @route   GET /api/prets/:id
-// @access  Public
+// @access  Auth + Space
 exports.getPretById = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const spaceId = req.params.spaceId || req.query.spaceId;
 
   const pret = await prisma.pret.findUnique({
     where: { id },
@@ -115,6 +179,15 @@ exports.getPretById = asyncHandler(async (req, res) => {
     return res.status(404).json({
       success: false,
       error: 'Prêt non trouvé',
+    });
+  }
+  
+  // Vérifier que le prêt appartient au Space
+  if (spaceId && pret.bien.spaceId !== spaceId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Ce prêt n\'appartient pas à cet espace',
+      code: 'PRET_NOT_IN_SPACE'
     });
   }
 
@@ -137,10 +210,11 @@ exports.getPretById = asyncHandler(async (req, res) => {
 });
 
 // @desc    Créer un nouveau prêt
-// @route   POST /api/prets
-// @access  Public
+// @route   POST /api/prets OU POST /api/spaces/:spaceId/prets
+// @access  Auth + Space (MEMBER minimum)
 exports.createPret = asyncHandler(async (req, res) => {
   const data = req.body;
+  const spaceId = req.params.spaceId || req.body.spaceId;
 
   // Validation basique
   if (!data.montant || !data.taux || !data.duree || !data.dateDebut || !data.organisme || !data.bienId) {
@@ -148,6 +222,25 @@ exports.createPret = asyncHandler(async (req, res) => {
       success: false,
       error: 'Champs requis manquants (montant, taux, duree, dateDebut, organisme, bienId)',
     });
+  }
+  
+  // Vérifier que le bien appartient au Space
+  if (spaceId) {
+    try {
+      await verifyBienInSpace(data.bienId, spaceId);
+    } catch (error) {
+      if (error.message === 'BIEN_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          error: 'Bien non trouvé',
+        });
+      }
+      return res.status(403).json({
+        success: false,
+        error: 'Ce bien n\'appartient pas à cet espace',
+        code: 'BIEN_NOT_IN_SPACE'
+      });
+    }
   }
 
   // Nettoyer les données
@@ -180,6 +273,9 @@ exports.createPret = asyncHandler(async (req, res) => {
   );
   
   dataToCreate.mensualite = amortissement.mensualiteTotale;
+  
+  // Supprimer spaceId (pas dans le modèle Pret)
+  delete dataToCreate.spaceId;
 
   const pret = await prisma.pret.create({
     data: dataToCreate,
@@ -196,19 +292,32 @@ exports.createPret = asyncHandler(async (req, res) => {
 
 // @desc    Mettre à jour un prêt
 // @route   PUT /api/prets/:id
-// @access  Public
+// @access  Auth + Space (MEMBER minimum)
 exports.updatePret = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const data = req.body;
+  const spaceId = req.params.spaceId || req.body.spaceId;
 
   const pretExistant = await prisma.pret.findUnique({
     where: { id },
+    include: {
+      bien: { select: { spaceId: true } }
+    }
   });
 
   if (!pretExistant) {
     return res.status(404).json({
       success: false,
       error: 'Prêt non trouvé',
+    });
+  }
+  
+  // Vérifier que le prêt appartient au Space
+  if (spaceId && pretExistant.bien.spaceId !== spaceId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Ce prêt n\'appartient pas à cet espace',
+      code: 'PRET_NOT_IN_SPACE'
     });
   }
 
@@ -260,6 +369,8 @@ exports.updatePret = asyncHandler(async (req, res) => {
   delete dataToUpdate.id;
   delete dataToUpdate.createdAt;
   delete dataToUpdate.updatedAt;
+  delete dataToUpdate.bien;
+  delete dataToUpdate.spaceId;
 
   const pret = await prisma.pret.update({
     where: { id },
@@ -277,18 +388,31 @@ exports.updatePret = asyncHandler(async (req, res) => {
 
 // @desc    Supprimer un prêt
 // @route   DELETE /api/prets/:id
-// @access  Public
+// @access  Auth + Space (MEMBER minimum)
 exports.deletePret = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const spaceId = req.params.spaceId || req.query.spaceId;
 
   const pret = await prisma.pret.findUnique({
     where: { id },
+    include: {
+      bien: { select: { spaceId: true } }
+    }
   });
 
   if (!pret) {
     return res.status(404).json({
       success: false,
       error: 'Prêt non trouvé',
+    });
+  }
+  
+  // Vérifier que le prêt appartient au Space
+  if (spaceId && pret.bien.spaceId !== spaceId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Ce prêt n\'appartient pas à cet espace',
+      code: 'PRET_NOT_IN_SPACE'
     });
   }
 

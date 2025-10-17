@@ -3,6 +3,7 @@ import { locatairesAPI, bauxAPI, biensAPI } from '../services/api';
 import { Plus, Search, Users, Building2, User, FileText, Pencil, Trash2, ExternalLink } from 'lucide-react';
 import LocataireForm from '../components/LocataireForm';
 import QuittanceForm from '../components/QuittanceForm';
+import ResilierBailModal from '../components/ResilierBailModal';
 import PageLayout from '../components/PageLayout';
 
 function LocatairesPage({ onNavigate }) {
@@ -15,6 +16,7 @@ function LocatairesPage({ onNavigate }) {
   const [showForm, setShowForm] = useState(false);
   const [locataireToEdit, setLocataireToEdit] = useState(null);
   const [showQuittanceForm, setShowQuittanceForm] = useState(false);
+  const [showResilierBailModal, setShowResilierBailModal] = useState(false);
   const [selectedBail, setSelectedBail] = useState(null);
 
   useEffect(() => {
@@ -85,6 +87,11 @@ function LocatairesPage({ onNavigate }) {
   const openQuittanceForm = (bail) => {
     setSelectedBail(bail);
     setShowQuittanceForm(true);
+  };
+
+  const openResilierBailModal = (bail) => {
+    setSelectedBail(bail);
+    setShowResilierBailModal(true);
   };
 
   const getLocataireBaux = (locataireId) => {
@@ -259,14 +266,24 @@ function LocatairesPage({ onNavigate }) {
                         </div>
                       </div>
                       
-                      {/* Bouton générer quittance */}
-                      <button
-                        onClick={() => openQuittanceForm(bailActif)}
-                        className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-accent-blue/20 to-accent-purple/20 hover:from-accent-blue/30 hover:to-accent-purple/30 border border-accent-blue/30 rounded-2xl text-accent-blue font-semibold transition-all shadow-card hover:shadow-card-hover"
-                      >
-                        <FileText className="h-5 w-5" />
-                        Générer une quittance de loyer
-                      </button>
+                      {/* Bouton générer quittance/facture */}
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => openQuittanceForm(bailActif)}
+                          className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-accent-blue/20 to-accent-purple/20 hover:from-accent-blue/30 hover:to-accent-purple/30 border border-accent-blue/30 rounded-2xl text-accent-blue font-semibold transition-all shadow-card hover:shadow-card-hover"
+                        >
+                          <FileText className="h-5 w-5" />
+                          {bailActif.locataire?.typeLocataire === 'ENTREPRISE' 
+                            ? 'Générer une facture' 
+                            : 'Générer une quittance de loyer'}
+                        </button>
+                        <button
+                          onClick={() => openResilierBailModal(bailActif)}
+                          className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-2xl text-red-400 font-semibold transition-all shadow-card hover:shadow-card-hover"
+                        >
+                          Résilier le bail
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -309,6 +326,22 @@ function LocatairesPage({ onNavigate }) {
             setSelectedBail(null);
           }}
           bail={selectedBail}
+        />
+      )}
+
+      {/* Modal Résilier Bail */}
+      {showResilierBailModal && selectedBail && (
+        <ResilierBailModal
+          bail={selectedBail}
+          onClose={() => {
+            setShowResilierBailModal(false);
+            setSelectedBail(null);
+          }}
+          onSuccess={() => {
+            setShowResilierBailModal(false);
+            setSelectedBail(null);
+            loadData();
+          }}
         />
       )}
     </PageLayout>

@@ -326,7 +326,15 @@ function BienForm({ onClose, onSubmit, bienToEdit = null }) {
                   required
                   step="0.01"
                   className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-                  placeholder="65"
+                  placeholder={
+                    formData.type === 'PARKING' ? '12' :
+                    formData.type === 'TERRAIN' ? '500' :
+                    formData.type === 'HANGAR' ? '200' :
+                    formData.type === 'BUREAUX' ? '80' :
+                    formData.type === 'LOCAL_COMMERCIAL' ? '50' :
+                    formData.type === 'MAISON' ? '120' :
+                    '65'
+                  }
                 />
               </div>
               
@@ -392,7 +400,15 @@ function BienForm({ onClose, onSubmit, bienToEdit = null }) {
                   required
                   step="0.01"
                   className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-                  placeholder="350000"
+                  placeholder={
+                    formData.type === 'PARKING' ? '15000' :
+                    formData.type === 'TERRAIN' ? '80000' :
+                    formData.type === 'HANGAR' ? '250000' :
+                    formData.type === 'BUREAUX' ? '300000' :
+                    formData.type === 'LOCAL_COMMERCIAL' ? '200000' :
+                    formData.type === 'MAISON' ? '450000' :
+                    '350000'
+                  }
                 />
               </div>
               <div>
@@ -422,7 +438,15 @@ function BienForm({ onClose, onSubmit, bienToEdit = null }) {
                   onChange={handleChange}
                   step="0.01"
                   className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-                  placeholder="28000"
+                  placeholder={
+                    formData.type === 'PARKING' ? '1200' :
+                    formData.type === 'TERRAIN' ? '6000' :
+                    formData.type === 'HANGAR' ? '20000' :
+                    formData.type === 'BUREAUX' ? '25000' :
+                    formData.type === 'LOCAL_COMMERCIAL' ? '15000' :
+                    formData.type === 'MAISON' ? '35000' :
+                    '28000'
+                  }
                 />
               </div>
               <div>
@@ -449,7 +473,15 @@ function BienForm({ onClose, onSubmit, bienToEdit = null }) {
                   onChange={handleChange}
                   step="0.01"
                   className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-                  placeholder="380000"
+                  placeholder={
+                    formData.type === 'PARKING' ? '18000' :
+                    formData.type === 'TERRAIN' ? '95000' :
+                    formData.type === 'HANGAR' ? '280000' :
+                    formData.type === 'BUREAUX' ? '330000' :
+                    formData.type === 'LOCAL_COMMERCIAL' ? '220000' :
+                    formData.type === 'MAISON' ? '480000' :
+                    '380000'
+                  }
                 />
               </div>
             </div>
@@ -470,7 +502,15 @@ function BienForm({ onClose, onSubmit, bienToEdit = null }) {
                   onChange={handleChange}
                   step="0.01"
                   className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-                  placeholder="45"
+                  placeholder={
+                    formData.type === 'PARKING' ? '15' :
+                    formData.type === 'TERRAIN' ? '10' :
+                    formData.type === 'HANGAR' ? '80' :
+                    formData.type === 'BUREAUX' ? '60' :
+                    formData.type === 'LOCAL_COMMERCIAL' ? '50' :
+                    formData.type === 'MAISON' ? '55' :
+                    '45'
+                  }
                 />
                 <p className="text-xs text-gray-500 mt-2">PNO, GLI, ou autre assurance liée au bien</p>
               </div>
@@ -485,7 +525,15 @@ function BienForm({ onClose, onSubmit, bienToEdit = null }) {
                   onChange={handleChange}
                   step="0.01"
                   className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-                  placeholder="1200"
+                  placeholder={
+                    formData.type === 'PARKING' ? '150' :
+                    formData.type === 'TERRAIN' ? '300' :
+                    formData.type === 'HANGAR' ? '1800' :
+                    formData.type === 'BUREAUX' ? '2500' :
+                    formData.type === 'LOCAL_COMMERCIAL' ? '1500' :
+                    formData.type === 'MAISON' ? '1800' :
+                    '1200'
+                  }
                 />
                 <p className="text-xs text-gray-500 mt-2">Montant annuel de la taxe foncière</p>
               </div>
@@ -507,9 +555,14 @@ function BienForm({ onClose, onSubmit, bienToEdit = null }) {
                   rows="3"
                   className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition resize-none"
                   placeholder={
-                    formData.type === 'LOCAL_COMMERCIAL' 
-                      ? "Local commercial en pied d'immeuble, vitrine..." 
-                      : "Bel appartement avec balcon..."
+                    formData.type === 'LOCAL_COMMERCIAL' ? "Local commercial en pied d'immeuble, vitrine sur rue..." :
+                    formData.type === 'BUREAUX' ? "Bureaux climatisés, bon état général, accès sécurisé..." :
+                    formData.type === 'HANGAR' ? "Hangar avec quai de chargement, hauteur sous plafond..." :
+                    formData.type === 'APPARTEMENT' ? "Bel appartement lumineux avec balcon, vue dégagée..." :
+                    formData.type === 'MAISON' ? "Maison avec jardin, garage, proche commodités..." :
+                    formData.type === 'PARKING' ? "Place de parking couverte, accès sécurisé par badge..." :
+                    formData.type === 'TERRAIN' ? "Terrain viabilisé, constructible, accès facile..." :
+                    "Description du bien..."
                   }
                 />
               </div>

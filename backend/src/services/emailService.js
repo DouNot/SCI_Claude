@@ -1,6 +1,5 @@
 /**
- * Service d'envoi d'emails
- * Gère l'envoi des quittances et autres documents par email
+ * Service d'envoi d'emails avec support Ethereal pour les tests
  */
 
 const nodemailer = require('nodemailer');
@@ -9,34 +8,52 @@ const config = require('../config/database');
 /**
  * Configuration du transporteur email
  */
-const createTransporter = () => {
-  return nodemailer.createTransport({
+const createTransporter = async () => {
+  // Si on est en mode test et qu'il n'y a pas de config email, utiliser Ethereal
+  if (!process.env.EMAIL_USER && process.env.NODE_ENV === 'development') {
+    console.log('⚠️  Aucune configuration email trouvée, utilisation de Ethereal pour les tests');
+    const testAccount = await nodemailer.createTestAccount();
+    
+    return nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+    });
+  }
+
+  // Configuration normale
+  const transportConfig = {
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: process.env.EMAIL_PORT || 587,
-    secure: false, // true pour le port 465, false pour les autres
+    port: parseInt(process.env.EMAIL_PORT) || 587,
+    secure: process.env.EMAIL_PORT === '465',
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASSWORD,
     },
-  });
+  };
+
+  // Pour le port 587, ajouter la config TLS
+  if (process.env.EMAIL_PORT !== '465') {
+    transportConfig.tls = {
+      rejectUnauthorized: false,
+    };
+  }
+
+  return nodemailer.createTransport(transportConfig);
 };
 
 /**
  * Envoyer une quittance par email
- * @param {Object} options - Options d'envoi
- * @param {string} options.to - Email du destinataire
- * @param {string} options.locataireName - Nom du locataire
- * @param {string} options.periode - Période (ex: "Octobre 2025")
- * @param {string} options.montant - Montant formaté
- * @param {Buffer} options.pdfBuffer - Buffer du PDF
- * @param {string} options.filename - Nom du fichier PDF
  */
 exports.envoyerQuittance = async (options) => {
   const { to, locataireName, periode, montant, pdfBuffer, filename } = options;
 
-  const transporter = createTransporter();
+  const transporter = await createTransporter();
 
-  // Template HTML de l'email
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -79,15 +96,6 @@ exports.envoyerQuittance = async (options) => {
           color: #64748b;
           text-align: center;
         }
-        .button {
-          display: inline-block;
-          padding: 12px 24px;
-          background-color: #10b981;
-          color: white;
-          text-decoration: none;
-          border-radius: 5px;
-          margin-top: 15px;
-        }
       </style>
     </head>
     <body>
@@ -119,7 +127,6 @@ exports.envoyerQuittance = async (options) => {
     </html>
   `;
 
-  // Version texte brut (fallback)
   const textContent = `
 Bonjour ${locataireName},
 
@@ -140,9 +147,8 @@ Cet email a été envoyé automatiquement, merci de ne pas y répondre.
 Pour toute question, contactez-nous à ${process.env.EMAIL_CONTACT || process.env.EMAIL_USER}
   `;
 
-  // Options de l'email
   const mailOptions = {
-    from: `"${process.env.COMPANY_NAME || 'SCI Claude'}" <${process.env.EMAIL_USER}>`,
+    from: `"${process.env.COMPANY_NAME || 'SCI Claude'}" <${process.env.EMAIL_USER || 'noreply@scicloud.test'}>`,
     to: to,
     subject: `Quittance de loyer - ${periode}`,
     text: textContent,
@@ -156,13 +162,20 @@ Pour toute question, contactez-nous à ${process.env.EMAIL_CONTACT || process.en
     ],
   };
 
-  // Envoyer l'email
   try {
     const info = await transporter.sendMail(mailOptions);
+    
+    // Si c'est Ethereal, afficher le lien de prévisualisation
+    if (info.messageId && nodemailer.getTestMessageUrl(info)) {
+      console.log('📧 Email de test envoyé !');
+      console.log('🔗 Prévisualisation:', nodemailer.getTestMessageUrl(info));
+    }
+    
     return {
       success: true,
       messageId: info.messageId,
       response: info.response,
+      previewUrl: nodemailer.getTestMessageUrl(info),
     };
   } catch (error) {
     console.error('Erreur lors de l\'envoi de l\'email:', error);
@@ -176,7 +189,7 @@ Pour toute question, contactez-nous à ${process.env.EMAIL_CONTACT || process.en
 exports.envoyerRelance = async (options) => {
   const { to, locataireName, periode, montant, joursRetard } = options;
 
-  const transporter = createTransporter();
+  const transporter = await createTransporter();
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -268,7 +281,7 @@ ${process.env.COMPANY_NAME || 'SCI Claude'}
   `;
 
   const mailOptions = {
-    from: `"${process.env.COMPANY_NAME || 'SCI Claude'}" <${process.env.EMAIL_USER}>`,
+    from: `"${process.env.COMPANY_NAME || 'SCI Claude'}" <${process.env.EMAIL_USER || 'noreply@scicloud.test'}>`,
     to: to,
     subject: `Rappel de paiement - Loyer ${periode}`,
     text: textContent,
@@ -277,9 +290,16 @@ ${process.env.COMPANY_NAME || 'SCI Claude'}
 
   try {
     const info = await transporter.sendMail(mailOptions);
+    
+    if (info.messageId && nodemailer.getTestMessageUrl(info)) {
+      console.log('📧 Email de relance envoyé !');
+      console.log('🔗 Prévisualisation:', nodemailer.getTestMessageUrl(info));
+    }
+    
     return {
       success: true,
       messageId: info.messageId,
+      previewUrl: nodemailer.getTestMessageUrl(info),
     };
   } catch (error) {
     console.error('Erreur lors de l\'envoi de la relance:', error);
@@ -292,10 +312,18 @@ ${process.env.COMPANY_NAME || 'SCI Claude'}
  */
 exports.testerConfiguration = async () => {
   try {
-    const transporter = createTransporter();
+    console.log('=== TEST CONFIGURATION EMAIL ===');
+    console.log('Host:', process.env.EMAIL_HOST);
+    console.log('Port:', process.env.EMAIL_PORT);
+    console.log('User:', process.env.EMAIL_USER);
+    console.log('Pass:', process.env.EMAIL_PASSWORD ? '****' + process.env.EMAIL_PASSWORD.slice(-4) : 'NON DEFINI');
+    console.log('================================');
+    
+    const transporter = await createTransporter();
     await transporter.verify();
     return { success: true, message: 'Configuration email valide' };
   } catch (error) {
+    console.error('Erreur de configuration email:', error.message);
     return { success: false, message: error.message };
   }
 };
