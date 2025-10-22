@@ -16,9 +16,19 @@ import LocatairesPage from './pages/LocatairesPage';
 import ContactsPage from './pages/ContactsPage';
 import DocumentsPage from './pages/DocumentsPage';
 import AssociesPage from './pages/AssociesPage';
+import AssocieDetailPage from './pages/AssocieDetailPage';
+import MembersPage from './pages/MembersPage';
+import InvitationPage from './pages/InvitationPage';
 import ParametresPage from './pages/ParametresPage';
 import ChargesPage from './pages/ChargesPage';
 import EvenementsFiscauxPage from './pages/EvenementsFiscauxPage';
+import ProjectionsPage from './pages/ProjectionsPage';
+import ProjectionDetailPage from './pages/ProjectionDetailPage';
+import RapportsPage from './pages/RapportsPage';
+import BusinessPlansPage from './pages/BusinessPlansPage';
+import ComptesPage from './pages/ComptesPage';
+import PretsPage from './pages/PretsPage';
+import TravauxPage from './pages/TravauxPage';
 
 // Layout pour les pages protégées
 const ProtectedLayout = ({ children }) => {
@@ -46,6 +56,7 @@ function App() {
             {/* Routes publiques */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/invite/:token" element={<InvitationPage />} />
 
             {/* Routes protégées */}
             <Route
@@ -92,6 +103,26 @@ function App() {
                 <ProtectedRoute>
                   <ProtectedLayout>
                     <LocatairesPage />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/prets"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <PretsPage />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/travaux"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <TravauxPage />
                   </ProtectedLayout>
                 </ProtectedRoute>
               }
@@ -147,11 +178,81 @@ function App() {
               }
             />
             <Route
+              path="/associes/:id"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <AssocieDetailPage />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/members"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <MembersPage />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/parametres"
               element={
                 <ProtectedRoute>
                   <ProtectedLayout>
                     <ParametresPage />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/projections"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <ProjectionsPage />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/projections/:id"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <ProjectionDetailPage />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/rapports"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <RapportsPage />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/business-plans"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <BusinessPlansPage />
+                  </ProtectedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/comptes"
+              element={
+                <ProtectedRoute>
+                  <ProtectedLayout>
+                    <ComptesPage />
                   </ProtectedLayout>
                 </ProtectedRoute>
               }

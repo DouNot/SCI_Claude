@@ -191,6 +191,9 @@ exports.createEvenement = asyncHandler(async (req, res) => {
     dataToCreate.notes = null;
   }
   
+  // Supprimer le spaceId car il n'existe pas dans le modèle EvenementFiscal
+  delete dataToCreate.spaceId;
+  
   const evenement = await prisma.evenementFiscal.create({
     data: dataToCreate,
     include: { bien: true },

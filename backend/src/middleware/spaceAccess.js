@@ -14,7 +14,7 @@ const prisma = new PrismaClient();
 const requireSpaceAccess = async (req, res, next) => {
   try {
     // 1. Récupérer le spaceId depuis params (prioritaire), query ou body
-    let spaceId = req.params.spaceId || req.query.spaceId || req.body.spaceId;
+    let spaceId = req.params.spaceId || req.query.spaceId || (req.body && req.body.spaceId);
     
     // Pour les requêtes FormData, vérifier aussi les champs
     if (!spaceId && req.body && typeof req.body === 'object') {

@@ -17,11 +17,13 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ROUTES AUTHENTIFICATION & SPACES (NOUVEAU)
 // ============================================
 const authRoutes = require('./src/routes/auth');
+const userRoutes = require('./src/routes/userRoutes');
 const spacesRoutes = require('./src/routes/spaces');
 const membersRoutes = require('./src/routes/members');
 const invitationsRoutes = require('./src/routes/invitations');
 
 app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
 app.use('/api/spaces', spacesRoutes);
 app.use('/api/spaces/:spaceId/members', membersRoutes);
 app.use('/api/invitations', invitationsRoutes);
@@ -30,9 +32,17 @@ app.use('/api/invitations', invitationsRoutes);
 // ROUTES AVEC SPACE (NOUVEAU FORMAT)
 // ============================================
 const bienRoutesNew = require('./src/routes/bienRoutesNew');
+const projectionsRoutes = require('./src/routes/projections');
+const rapportsRoutes = require('./src/routes/rapports');
+const businessPlansRoutes = require('./src/routes/businessPlans');
+const bankRoutes = require('./src/routes/bank');
 // TODO: Adapter les autres routes au format Space
 
 app.use('/api/spaces/:spaceId/biens', bienRoutesNew);
+app.use('/api/spaces/:spaceId/projections', projectionsRoutes);
+app.use('/api/spaces/:spaceId/rapports', rapportsRoutes);
+app.use('/api/spaces/:spaceId/business-plans', businessPlansRoutes);
+app.use('/api/spaces/:spaceId/comptes-bancaires', bankRoutes);
 
 // ============================================
 // ANCIENNES ROUTES (À MIGRER PROGRESSIVEMENT)

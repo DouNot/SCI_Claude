@@ -416,13 +416,22 @@ exports.deletePret = asyncHandler(async (req, res) => {
     });
   }
 
-  await prisma.pret.delete({
-    where: { id },
-  });
+  try {
+    await prisma.pret.delete({
+      where: { id },
+    });
 
-  res.status(200).json({
-    success: true,
-    data: {},
-    message: 'Prêt supprimé avec succès',
-  });
+    res.status(200).json({
+      success: true,
+      data: {},
+      message: 'Prêt supprimé avec succès',
+    });
+  } catch (error) {
+    console.error('Erreur lors de la suppression du prêt:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la suppression du prêt',
+      details: error.message
+    });
+  }
 });

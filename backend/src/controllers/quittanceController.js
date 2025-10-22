@@ -45,7 +45,6 @@ exports.genererQuittance = asyncHandler(async (req, res) => {
     bailId, 
     mois, 
     annee, 
-    datePaiement,
     typePeriode = 'MENSUELLE', // MENSUELLE ou TRIMESTRIELLE
     typeDocument = 'QUITTANCE' // QUITTANCE ou FACTURE
   } = req.body;
@@ -103,20 +102,60 @@ exports.genererQuittance = asyncHandler(async (req, res) => {
   const montantLoyer = parseFloat(bail.loyerHC);
   const montantCharges = parseFloat(bail.charges) || 0;
   
-  // Créer le PDF
-  const doc = new PDFDocument(config.pageFormat);
-
-  // Headers pour le téléchargement
-  res.setHeader('Content-Type', 'application/pdf');
+  // ============================================
+  // CORRECTION: Factures payées automatiquement
+  // ============================================
+  // Pour l'instant, on considère toutes les factures comme payées à l'émission
+  // Plus tard, avec la connexion bancaire, on fera la réconciliation automatique
+  const dateEmission = new Date();
+  const datePaiementAuto = dateEmission; // Payée automatiquement à la date d'émission
+  const estPayeAuto = true; // Toujours payée
   
+  // ============================================
+  // GESTION PÉRIODE TRIMESTRIELLE
+  // ============================================
   if (typePeriode === 'TRIMESTRIELLE') {
-    // Générer PDF TRIMESTRIEL (3 mois en un document)
-    const trimestre = Math.ceil(parseInt(mois) / 3);
+    const mois1 = parseInt(mois);
+    const mois2 = mois1 + 1 > 12 ? 1 : mois1 + 1;
+    const mois3 = mois1 + 2 > 12 ? (mois1 + 2) - 12 : mois1 + 2;
+    const trimestre = Math.ceil(mois1 / 3);
+    
+    // ✅ VÉRIFICATION DOUBLON
+    const quittancesExistantes = await prisma.quittance.findMany({
+      where: {
+        bailId,
+        annee: parseInt(annee),
+        mois: { in: [mois1, mois2, mois3] }
+      },
+      orderBy: { mois: 'asc' }
+    });
+    
+    if (quittancesExistantes.length > 0) {
+      const moisExistants = quittancesExistantes.map(q => helpers.getMonthName(q.mois)).join(', ');
+      const documentType = typeDocument === 'FACTURE' ? 'facture' : 'quittance';
+      
+      return res.status(409).json({
+        success: false,
+        error: 'QUITTANCES_ALREADY_EXIST',
+        message: `Des ${documentType}s existent déjà pour ce trimestre (${quittancesExistantes.length}/3 mois : ${moisExistants}). Retrouvez-les dans la section Documents.`,
+        data: {
+          existingMonths: quittancesExistantes.map(q => q.mois),
+          quittances: quittancesExistantes,
+          trimestre,
+          annee: parseInt(annee)
+        }
+      });
+    }
+    
+    // Générer le PDF
     const filename = typeDocument === 'FACTURE' 
       ? `facture-T${trimestre}-${annee}.pdf`
       : `quittance-T${trimestre}-${annee}.pdf`;
     
+    res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    
+    const doc = new PDFDocument(config.pageFormat);
     doc.pipe(res);
     
     if (typeDocument === 'FACTURE') {
@@ -125,25 +164,31 @@ exports.genererQuittance = asyncHandler(async (req, res) => {
       genererQuittanceTrimestrielle(doc, bail, mois, annee, montantLoyer, montantCharges);
     }
     
+    // ✅ SAUVEGARDE : Créer 3 entrées en BDD (une par mois) - PAYÉES AUTO
+    const quittancesData = [mois1, mois2, mois3].map(m => ({
+      bailId,
+      mois: m,
+      annee: parseInt(annee),
+      numeroQuittance: helpers.generateQuittanceNumber(bailId, m, annee),
+      montantLoyer,
+      montantCharges,
+      montantTotal: montantLoyer + montantCharges,
+      datePaiement: datePaiementAuto,
+      estPaye: estPayeAuto,
+    }));
+    
+    await prisma.quittance.createMany({
+      data: quittancesData
+    });
+    
+    console.log(`✅ Facture trimestrielle créée : 3 quittances payées automatiquement pour T${trimestre} ${annee}`);
+    
   } else {
-    // Générer PDF MENSUEL
-    const moisPadded = String(mois).padStart(2, '0');
-    const filename = typeDocument === 'FACTURE'
-      ? `facture-${annee}-${moisPadded}.pdf`
-      : `quittance-${annee}-${moisPadded}.pdf`;
+    // ============================================
+    // GESTION PÉRIODE MENSUELLE
+    // ============================================
     
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-    doc.pipe(res);
-    
-    const statutPaiement = datePaiement ? 'PAYE' : 'EN ATTENTE';
-    
-    if (typeDocument === 'FACTURE') {
-      genererFactureMensuelle(doc, bail, mois, annee, datePaiement, montantLoyer, montantCharges);
-    } else {
-      genererQuittanceMensuelle(doc, bail, mois, annee, datePaiement, statutPaiement, montantLoyer, montantCharges);
-    }
-    
-    // Sauvegarder dans la BDD
+    // ✅ VÉRIFICATION DOUBLON
     const quittanceExistante = await prisma.quittance.findFirst({
       where: {
         bailId,
@@ -152,30 +197,59 @@ exports.genererQuittance = asyncHandler(async (req, res) => {
       },
     });
     
-    if (!quittanceExistante) {
-      const numeroQuittance = helpers.generateQuittanceNumber(bailId, mois, annee);
-      await prisma.quittance.create({
+    if (quittanceExistante) {
+      const documentType = typeDocument === 'FACTURE' ? 'facture' : 'quittance';
+      const moisNom = helpers.getMonthName(parseInt(mois));
+      
+      return res.status(409).json({
+        success: false,
+        error: 'QUITTANCE_ALREADY_EXISTS',
+        message: `Une ${documentType} existe déjà pour ${moisNom} ${annee}. Retrouvez-la dans la section Documents.`,
         data: {
-          bailId,
+          quittance: quittanceExistante,
           mois: parseInt(mois),
-          annee: parseInt(annee),
-          numeroQuittance,
-          montantLoyer,
-          montantCharges,
-          montantTotal: montantLoyer + montantCharges,
-          datePaiement: datePaiement ? new Date(datePaiement) : null,
-          estPaye: !!datePaiement,
-        },
-      });
-    } else if (datePaiement && !quittanceExistante.estPaye) {
-      await prisma.quittance.update({
-        where: { id: quittanceExistante.id },
-        data: {
-          datePaiement: new Date(datePaiement),
-          estPaye: true,
-        },
+          annee: parseInt(annee)
+        }
       });
     }
+    
+    // Générer le PDF
+    const moisPadded = String(mois).padStart(2, '0');
+    const filename = typeDocument === 'FACTURE'
+      ? `facture-${annee}-${moisPadded}.pdf`
+      : `quittance-${annee}-${moisPadded}.pdf`;
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    
+    const doc = new PDFDocument(config.pageFormat);
+    doc.pipe(res);
+    
+    const statutPaiement = 'PAYE'; // Toujours payée
+    
+    if (typeDocument === 'FACTURE') {
+      genererFactureMensuelle(doc, bail, mois, annee, datePaiementAuto, montantLoyer, montantCharges);
+    } else {
+      genererQuittanceMensuelle(doc, bail, mois, annee, datePaiementAuto, statutPaiement, montantLoyer, montantCharges);
+    }
+    
+    // ✅ SAUVEGARDE : Créer une entrée en BDD - PAYÉE AUTO
+    const numeroQuittance = helpers.generateQuittanceNumber(bailId, mois, annee);
+    await prisma.quittance.create({
+      data: {
+        bailId,
+        mois: parseInt(mois),
+        annee: parseInt(annee),
+        numeroQuittance,
+        montantLoyer,
+        montantCharges,
+        montantTotal: montantLoyer + montantCharges,
+        datePaiement: datePaiementAuto,
+        estPaye: estPayeAuto,
+      },
+    });
+    
+    console.log(`✅ Facture mensuelle créée et payée automatiquement : ${numeroQuittance}`);
   }
 });
 
@@ -185,10 +259,10 @@ exports.genererQuittance = asyncHandler(async (req, res) => {
 function genererQuittanceMensuelle(doc, bail, mois, annee, datePaiement, statutPaiement, montantLoyer, montantCharges) {
   const montantTotal = montantLoyer + montantCharges;
   
-  // Watermark si non payé
-  if (!datePaiement) {
-    templates.addWatermark(doc, 'IMPAYE');
-  }
+  // Pas de watermark puisque toujours payée
+  // if (!datePaiement) {
+  //   templates.addWatermark(doc, 'IMPAYE');
+  // }
 
   // EN-TÊTE
   templates.drawHeader(doc, 'QUITTANCE DE LOYER', null, statutPaiement);
@@ -322,8 +396,8 @@ function genererQuittanceMensuelle(doc, bail, mois, annee, datePaiement, statutP
     columnWidths: [350, 145],
   });
 
-  const labelTotal = datePaiement ? 'MONTANT TOTAL REGLE' : 'MONTANT TOTAL A REGLER';
-  const colorTotal = datePaiement ? config.colors.success : config.colors.primary;
+  const labelTotal = 'MONTANT TOTAL REGLE';
+  const colorTotal = config.colors.success;
   
   templates.drawHighlight(doc, {
     label: labelTotal,
@@ -515,13 +589,13 @@ function genererFactureMensuelle(doc, bail, mois, annee, datePaiement, montantLo
   const montantTVA = montantHT * tauxTVA;
   const montantTTC = montantHT + montantTVA;
   
-  const numeroFacture = `F${annee}${String(mois).padStart(2, '0')}${String(bail.id).padStart(4, '0')}`;
+  const numeroFacture = `F${annee}${String(mois).padStart(2, '0')}${String(bail.id).substring(0, 4)}`;
   const dateEmission = new Date();
   const dateLimite = new Date(dateEmission);
   dateLimite.setDate(dateLimite.getDate() + 30);
   
   // EN-TÊTE
-  templates.drawHeader(doc, 'FACTURE DE LOYER', numeroFacture, datePaiement ? 'PAYE' : 'IMPAYE');
+  templates.drawHeader(doc, 'FACTURE DE LOYER', numeroFacture, 'PAYE');
 
   // PÉRIODE
   const moisNom = helpers.getMonthName(parseInt(mois));
@@ -630,9 +704,9 @@ function genererFactureMensuelle(doc, bail, mois, annee, datePaiement, montantLo
   doc.moveDown(0.3);
   
   templates.drawHighlight(doc, {
-    label: 'TOTAL TTC A PAYER',
+    label: 'TOTAL TTC REGLE',
     value: helpers.formatCurrency(montantTTC),
-    color: datePaiement ? config.colors.success : config.colors.primary,
+    color: config.colors.success,
     height: 40,
   });
 
@@ -671,7 +745,7 @@ function genererFactureTrimestrielle(doc, bail, moisDebut, annee, montantLoyer, 
   const mois3 = mois1 + 2 > 12 ? (mois1 + 2) - 12 : mois1 + 2;
   const trimestre = Math.ceil(mois1 / 3);
   
-  const numeroFacture = `FT${annee}T${trimestre}${String(bail.id).padStart(4, '0')}`;
+  const numeroFacture = `FT${annee}T${trimestre}${String(bail.id).substring(0, 4)}`;
   const dateEmission = new Date();
   const dateLimite = new Date(dateEmission);
   dateLimite.setDate(dateLimite.getDate() + 30);
@@ -816,6 +890,51 @@ exports.getQuittancesByBail = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Récupérer toutes les quittances/factures d'un space (pour Documents)
+ * @route   GET /api/spaces/:spaceId/quittances
+ * @access  Auth + Space (VIEWER minimum)
+ */
+exports.getQuittancesBySpace = asyncHandler(async (req, res) => {
+  const { spaceId } = req.params;
+  const { annee, bailId } = req.query;
+
+  const where = {
+    bail: {
+      bien: {
+        spaceId
+      }
+    }
+  };
+
+  if (annee) {
+    where.annee = parseInt(annee);
+  }
+
+  if (bailId) {
+    where.bailId = bailId;
+  }
+
+  const quittances = await prisma.quittance.findMany({
+    where,
+    include: {
+      bail: {
+        include: {
+          bien: { select: { adresse: true, ville: true } },
+          locataire: { select: { nom: true, prenom: true, raisonSociale: true, typeLocataire: true } }
+        }
+      }
+    },
+    orderBy: [{ annee: 'desc' }, { mois: 'desc' }],
+  });
+
+  res.status(200).json({
+    success: true,
+    count: quittances.length,
+    data: quittances,
+  });
+});
+
+/**
  * @desc    Marquer une quittance comme payée
  * @route   PATCH /api/quittances/:id/payer
  * @access  Auth + Space (MEMBER minimum)
@@ -844,3 +963,5 @@ exports.marquerPayee = asyncHandler(async (req, res) => {
     data: quittance,
   });
 });
+
+module.exports = exports;

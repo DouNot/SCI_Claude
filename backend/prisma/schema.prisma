@@ -68,6 +68,10 @@ model Space {
   locataires  Locataire[]
   assembleesGenerales AssembleeGenerale[]
   notifications Notification[]
+  projections Projection[]
+  rapportsAnnuels RapportAnnuel[]
+  comptesBancaires CompteBancaire[]
+  businessPlans BusinessPlan[]
   
   @@map("spaces")
 }
@@ -137,9 +141,33 @@ model Associe {
   // Relations
   space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   user  User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  mouvementsCCA MouvementCCA[]
   
   @@index([spaceId, statut])
   @@map("associes")
+}
+
+// ============================================
+// MOUVEMENTS COMPTE COURANT ASSOCIÉ
+// ============================================
+
+model MouvementCCA {
+  id          String   @id @default(uuid())
+  associeId   String   @map("associe_id")
+  type        String   // APPORT, RETRAIT, INTERETS
+  montant     Float
+  libelle     String
+  date        DateTime
+  reference   String?  // Numéro de virement, etc.
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  associe Associe @relation(fields: [associeId], references: [id], onDelete: Cascade)
+  
+  @@index([associeId, date])
+  @@map("mouvements_cca")
 }
 
 // ============================================
@@ -277,8 +305,13 @@ model Bail {
   charges       Float?
   depotGarantie Float?      @map("depot_garantie")
   indexRevision String?     @map("index_revision")
+  
+  // Refacturation Taxe Foncière
   refactureTaxeFonciere Boolean @default(false) @map("refacture_taxe_fonciere")
-  montantTaxeFonciere Float?   @map("montant_taxe_fonciere")
+  montantTaxeFonciere   Float?   @map("montant_taxe_fonciere") // Snapshot au moment de la création
+  partRefactureTF       Float?   @map("part_refacture_tf") // Pourcentage refacturé (0-100)
+  montantRefactureTF    Float?   @map("montant_refacture_tf") // Montant calculé automatiquement
+  
   statut        String      @default("ACTIF")
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
@@ -455,4 +488,284 @@ model Notification {
   space       Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   
   @@map("notifications")
+}
+
+// ============================================
+// PROJECTIONS FINANCIÈRES
+// ============================================
+
+model Projection {
+  id          String    @id @default(uuid())
+  spaceId     String    @map("space_id")
+  nom         String
+  description String?
+  scenario    String    @default("REALISTE") // OPTIMISTE, REALISTE, PESSIMISTE, PERSONNALISE
+  dureeAnnees Int       @default(5) @map("duree_annees")
+  dateDebut   DateTime  @map("date_debut")
+  statut      String    @default("BROUILLON") // BROUILLON, ACTIVE, ARCHIVEE
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  space       Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  hypotheses  HypothesesProjection?
+  donnees     DonneesProjection[]
+  
+  @@index([spaceId])
+  @@index([spaceId, statut])
+  @@map("projections")
+}
+
+model HypothesesProjection {
+  id            String    @id @default(uuid())
+  projectionId  String    @unique @map("projection_id")
+  
+  // Hypothèses générales
+  tauxInflation            Float @default(2.0) @map("taux_inflation")
+  tauxVacanceLocative      Float @default(5.0) @map("taux_vacance_locative")
+  tauxAugmentationLoyer    Float @default(2.0) @map("taux_augmentation_loyer")
+  tauxAugmentationCharges  Float @default(3.0) @map("taux_augmentation_charges")
+  
+  // Hypothèses de rentabilité
+  tauxActualisation Float @default(4.0) @map("taux_actualisation")
+  tauxImposition    Float @default(30.0) @map("taux_imposition")
+  
+  // Hypothèses de travaux
+  provisionTravauxAnnuelle Float   @default(0) @map("provision_travaux_annuelle")
+  travauxExceptionnels     String? @map("travaux_exceptionnels") // JSON
+  
+  // Hypothèses de revente
+  inclureRevente         Boolean @default(false) @map("inclure_revente")
+  anneeRevente           Int?    @map("annee_revente")
+  tauxAppreciationBien   Float   @default(2.0) @map("taux_appreciation_bien")
+  fraisVente             Float   @default(8.0) @map("frais_vente")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  projection Projection @relation(fields: [projectionId], references: [id], onDelete: Cascade)
+  
+  @@map("hypotheses_projection")
+}
+
+model DonneesProjection {
+  id           String @id @default(uuid())
+  projectionId String @map("projection_id")
+  annee        Int
+  mois         Int
+  
+  // Revenus
+  revenusLocatifs Float @default(0) @map("revenus_locatifs")
+  autresRevenus   Float @default(0) @map("autres_revenus")
+  totalRevenus    Float @default(0) @map("total_revenus")
+  
+  // Charges
+  chargesFixes      Float @default(0) @map("charges_fixes")
+  chargesVariables  Float @default(0) @map("charges_variables")
+  mensualitesPret   Float @default(0) @map("mensualites_pret")
+  travaux           Float @default(0)
+  impots            Float @default(0)
+  totalCharges      Float @default(0) @map("total_charges")
+  
+  // Résultats
+  cashflowNet    Float @default(0) @map("cashflow_net")
+  cashflowCumule Float @default(0) @map("cashflow_cumule")
+  
+  // Patrimoine
+  valeurBien       Float @default(0) @map("valeur_bien")
+  capitalRestantDu Float @default(0) @map("capital_restant_du")
+  patrimoineNet    Float @default(0) @map("patrimoine_net")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  projection Projection @relation(fields: [projectionId], references: [id], onDelete: Cascade)
+  
+  @@index([projectionId, annee, mois])
+  @@map("donnees_projection")
+}
+
+// ============================================
+// RAPPORTS ANNUELS
+// ============================================
+
+model RapportAnnuel {
+  id          String   @id @default(uuid())
+  spaceId     String   @map("space_id")
+  nom         String
+  annee       Int
+  type        String   @default("COMPLET") // COMPLET, SIMPLIFIE, FISCAL
+  
+  // Période du rapport
+  dateDebut   DateTime @map("date_debut")
+  dateFin     DateTime @map("date_fin")
+  
+  // Données calculées (JSON)
+  donnees     String?  // Stockage JSON des données agrégées
+  
+  // Fichier généré
+  urlPdf      String?  @map("url_pdf")
+  filename    String?
+  tailleFichier Int?   @map("taille_fichier") // en bytes
+  
+  // Métadonnées
+  statut      String   @default("BROUILLON") // BROUILLON, GENERE, ARCHIVE
+  generePar   String?  @map("genere_par") // userId
+  dateGeneration DateTime? @map("date_generation")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  
+  @@index([spaceId])
+  @@index([spaceId, annee])
+  @@map("rapports_annuels")
+}
+
+// ============================================
+// CONNEXION BANCAIRE
+// ============================================
+
+model CompteBancaire {
+  id              String   @id @default(uuid())
+  spaceId         String   @map("space_id")
+  
+  // Informations du compte
+  nom             String
+  banque          String
+  iban            String?
+  typeCompte      String   @map("type_compte") // COURANT, EPARGNE, PROFESSIONNEL
+  devise          String   @default("EUR")
+  
+  // Soldes
+  soldeActuel     Float    @default(0) @map("solde_actuel")
+  soldeDisponible Float?   @map("solde_disponible")
+  decouvertAutorise Float? @map("decouvert_autorise")
+  
+  // Connexion API
+  provider        String?  // BRIDGE, TINK, PLAID, MANUAL
+  accountId       String?  @map("account_id") // ID externe
+  accessToken     String?  @map("access_token") // Token chiffré
+  refreshToken    String?  @map("refresh_token")
+  tokenExpiration DateTime? @map("token_expiration")
+  
+  // Synchronisation
+  derniereSynchro DateTime? @map("derniere_synchro")
+  autoSync        Boolean  @default(true) @map("auto_sync")
+  frequenceSynchro Int     @default(24) @map("frequence_synchro") // heures
+  
+  // Métadonnées
+  statut          String   @default("ACTIF") // ACTIF, SUSPENDU, ERREUR, DECONNECTE
+  estPrincipal    Boolean  @default(false) @map("est_principal")
+  notes           String?
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  space           Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  transactions    TransactionBancaire[]
+  
+  @@index([spaceId])
+  @@index([accountId])
+  @@map("comptes_bancaires")
+}
+
+model TransactionBancaire {
+  id              String   @id @default(uuid())
+  compteBancaireId String  @map("compte_bancaire_id")
+  
+  // Transaction
+  date            DateTime
+  dateValeur      DateTime? @map("date_valeur")
+  libelle         String
+  montant         Float
+  devise          String   @default("EUR")
+  
+  // Catégorisation
+  categorie       String?
+  sousCategorie   String?  @map("sous_categorie")
+  estRecurrent    Boolean  @default(false) @map("est_recurrent")
+  
+  // Réconciliation
+  estReconcilie   Boolean  @default(false) @map("est_reconcilie")
+  factureId       String?  @map("facture_id")
+  quittanceId     String?  @map("quittance_id")
+  chargeId        String?  @map("charge_id")
+  
+  // Données API
+  transactionId   String?  @unique @map("transaction_id") // ID externe
+  rawData         String?  @map("raw_data") // JSON brut de l'API
+  
+  // Métadonnées
+  notes           String?
+  etiquettes      String?  // JSON array de tags
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  compteBancaire  CompteBancaire @relation(fields: [compteBancaireId], references: [id], onDelete: Cascade)
+  
+  @@index([compteBancaireId])
+  @@index([date])
+  @@index([transactionId])
+  @@index([estReconcilie])
+  @@map("transactions_bancaires")
+}
+
+// ============================================
+// BUSINESS PLANS
+// ============================================
+
+model BusinessPlan {
+  id          String   @id @default(uuid())
+  spaceId     String   @map("space_id")
+  
+  nom         String
+  description String?
+  
+  // Type et objectif
+  type        String   @default("ACQUISITION") // ACQUISITION, REFINANCEMENT, TRAVAUX
+  montantDemande Float  @map("montant_demande")
+  dureePret   Int      @map("duree_pret") // en mois
+  tauxEstime  Float?   @map("taux_estime")
+  
+  // Période d'analyse
+  dureeProjection Int  @default(10) @map("duree_projection") // années
+  
+  // Données calculées (JSON)
+  donnees     String?  // Stockage JSON des calculs
+  
+  // Hypothèses personnalisées
+  hypotheses  String?  // JSON
+  
+  // Fichier généré
+  urlPdf      String?  @map("url_pdf")
+  filename    String?
+  tailleFichier Int?   @map("taille_fichier")
+  
+  // Métadonnées
+  statut      String   @default("BROUILLON") // BROUILLON, GENERE, ENVOYE, VALIDE, REJETE
+  generePar   String?  @map("genere_par")
+  dateGeneration DateTime? @map("date_generation")
+  dateSoumission DateTime? @map("date_soumission")
+  
+  // Banque
+  banqueDestination String? @map("banque_destination")
+  contactBanque     String? @map("contact_banque")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  
+  @@index([spaceId])
+  @@index([statut])
+  @@map("business_plans")
 }

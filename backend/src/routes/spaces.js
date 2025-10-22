@@ -145,7 +145,7 @@ router.post('/', requireAuth, async (req, res) => {
           adresse: adresse || null,
           objetSocial: objetSocial || null,
           formeJuridique: formeJuridique || 'SCI',
-          statut: 'DRAFT' // Commence en DRAFT
+          statut: 'ACTIVE' // Active dès la création pour accès immédiat
         }
       });
       

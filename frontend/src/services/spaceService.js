@@ -86,7 +86,8 @@ export const spaceService = {
   /**
    * Récupérer les membres d'un espace
    */
-  async getMembers(spaceId, token) {
+  async getMembers(spaceId) {
+    const token = localStorage.getItem('token');
     const response = await spaceApi.get(`/spaces/${spaceId}/members`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -98,10 +99,44 @@ export const spaceService = {
   /**
    * Inviter un membre
    */
-  async inviteMember(spaceId, email, role, token) {
+  async inviteMember(spaceId, email, role) {
+    const token = localStorage.getItem('token');
     const response = await spaceApi.post(
       `/spaces/${spaceId}/members/invite`,
       { email, role },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  /**
+   * Révoquer une invitation
+   */
+  async removeMember(spaceId, memberId) {
+    const token = localStorage.getItem('token');
+    const response = await spaceApi.delete(
+      `/spaces/${spaceId}/members/${memberId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  /**
+   * Modifier le rôle d'un membre
+   */
+  async updateMemberRole(spaceId, memberId, role) {
+    const token = localStorage.getItem('token');
+    const response = await spaceApi.patch(
+      `/spaces/${spaceId}/members/${memberId}`,
+      { role },
       {
         headers: {
           Authorization: `Bearer ${token}`,

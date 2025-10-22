@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Lock, Unlock } from 'lucide-react';
 import LocataireForm from './LocataireForm';
 
 function BailForm({ onClose, onSubmit, bailToEdit = null, biensList = [], locatairesList = [], onLocataireCreated }) {
@@ -15,7 +15,9 @@ function BailForm({ onClose, onSubmit, bailToEdit = null, biensList = [], locata
     depotGarantie: '',
     indexRevision: '',
     refactureTaxeFonciere: false,
-    montantTaxeFonciere: '',
+    montantTaxeFonciere: '', // Snapshot de la TF au moment de la création
+    partRefactureTF: '100', // Pourcentage par défaut
+    montantRefactureTF: '', // Calculé automatiquement
     statut: 'ACTIF',
     bienId: '',
     locataireId: '',
@@ -24,6 +26,8 @@ function BailForm({ onClose, onSubmit, bailToEdit = null, biensList = [], locata
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showLocataireForm, setShowLocataireForm] = useState(false);
+  const [tfLocked, setTfLocked] = useState(true); // Verrouillé par défaut
+  const [bienTaxeFonciere, setBienTaxeFonciere] = useState(null);
 
   // Pré-remplir le formulaire en mode édition ou avec un bien spécifique
   useEffect(() => {
@@ -39,10 +43,13 @@ function BailForm({ onClose, onSubmit, bailToEdit = null, biensList = [], locata
         indexRevision: bailToEdit.indexRevision || '',
         refactureTaxeFonciere: bailToEdit.refactureTaxeFonciere || false,
         montantTaxeFonciere: bailToEdit.montantTaxeFonciere || '',
+        partRefactureTF: bailToEdit.partRefactureTF || '100',
+        montantRefactureTF: bailToEdit.montantRefactureTF || '',
         statut: bailToEdit.statut || 'ACTIF',
         bienId: bailToEdit.bienId || '',
         locataireId: bailToEdit.locataireId || '',
       });
+      setTfLocked(false); // En mode édition, permettre modification
     } else if (biensList.length === 1) {
       // Si un seul bien est passé, le pré-sélectionner
       setFormData(prev => ({
@@ -51,6 +58,47 @@ function BailForm({ onClose, onSubmit, bailToEdit = null, biensList = [], locata
       }));
     }
   }, [bailToEdit, biensList]);
+
+  // Auto-remplir la TF quand un bien est sélectionné
+  useEffect(() => {
+    if (formData.bienId && !isEditMode) {
+      const selectedBien = biensList.find(b => b.id === formData.bienId);
+      if (selectedBien) {
+        setBienTaxeFonciere(selectedBien.taxeFonciere);
+        
+        if (selectedBien.taxeFonciere && selectedBien.taxeFonciere > 0) {
+          setFormData(prev => ({
+            ...prev,
+            montantTaxeFonciere: selectedBien.taxeFonciere.toString()
+          }));
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            montantTaxeFonciere: ''
+          }));
+        }
+      }
+    }
+  }, [formData.bienId, biensList, isEditMode]);
+
+  // Calculer automatiquement le montant refacturé
+  useEffect(() => {
+    if (formData.refactureTaxeFonciere && formData.montantTaxeFonciere && formData.partRefactureTF) {
+      const tf = parseFloat(formData.montantTaxeFonciere) || 0;
+      const part = parseFloat(formData.partRefactureTF) || 0;
+      const montantRefacture = (tf * part) / 100;
+      
+      setFormData(prev => ({
+        ...prev,
+        montantRefactureTF: montantRefacture.toFixed(2)
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        montantRefactureTF: ''
+      }));
+    }
+  }, [formData.refactureTaxeFonciere, formData.montantTaxeFonciere, formData.partRefactureTF]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -328,9 +376,9 @@ function BailForm({ onClose, onSubmit, bailToEdit = null, biensList = [], locata
               </div>
             </div>
 
-            {/* Taxe Foncière */}
+            {/* Taxe Foncière - NOUVEAU */}
             <div>
-              <h3 className="text-lg font-semibold text-white mb-4">🏠 Taxe Foncière</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">🏛️ Taxe Foncière</h3>
               <div className="space-y-4">
                 <div className="flex items-center gap-3 p-4 bg-[#0f0f0f] border border-gray-800 rounded-lg">
                   <input
@@ -347,22 +395,94 @@ function BailForm({ onClose, onSubmit, bailToEdit = null, biensList = [], locata
                 </div>
                 
                 {formData.refactureTaxeFonciere && (
-                  <div className="animate-fade-in">
-                    <label className="block text-sm font-medium text-gray-200 mb-1">
-                      Montant de TF refacturé (€/an)
-                    </label>
-                    <input
-                      type="number"
-                      name="montantTaxeFonciere"
-                      value={formData.montantTaxeFonciere}
-                      onChange={handleChange}
-                      step="0.01"
-                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-                      placeholder="1500"
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
-                      💡 Montant annuel de la taxe foncière à refacturer (sera divisé sur 12 mois)
-                    </p>
+                  <div className="animate-fade-in space-y-4">
+                    {/* Message si pas de TF sur le bien */}
+                    {!bienTaxeFonciere && formData.bienId && (
+                      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+                        <p className="text-yellow-400 text-sm">
+                          ⚠️ Ce bien n'a pas de taxe foncière renseignée. 
+                          <br />
+                          <a 
+                            href={`/biens/${formData.bienId}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="underline hover:text-yellow-300"
+                          >
+                            Renseignez-la dans la fiche du bien
+                          </a> ou entrez-la manuellement ci-dessous.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Montant TF avec bouton verrouillage */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-1">
+                        Montant de la Taxe Foncière (€/an)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          name="montantTaxeFonciere"
+                          value={formData.montantTaxeFonciere}
+                          onChange={handleChange}
+                          disabled={tfLocked && !isEditMode && bienTaxeFonciere}
+                          step="0.01"
+                          className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition disabled:opacity-60 disabled:cursor-not-allowed pr-12"
+                          placeholder="1500"
+                        />
+                        {!isEditMode && bienTaxeFonciere && (
+                          <button
+                            type="button"
+                            onClick={() => setTfLocked(!tfLocked)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition"
+                            title={tfLocked ? "Déverrouiller pour modifier" : "Verrouiller"}
+                          >
+                            {tfLocked ? <Lock className="h-5 w-5" /> : <Unlock className="h-5 w-5" />}
+                          </button>
+                        )}
+                      </div>
+                      {bienTaxeFonciere && tfLocked && !isEditMode && (
+                        <p className="text-xs text-green-400 mt-1">
+                          ✅ Auto-rempli depuis le bien ({bienTaxeFonciere.toLocaleString('fr-FR')} €/an)
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Part refacturée */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-1">
+                        Part refacturée au locataire (%)
+                      </label>
+                      <input
+                        type="number"
+                        name="partRefactureTF"
+                        value={formData.partRefactureTF}
+                        onChange={handleChange}
+                        min="0"
+                        max="100"
+                        step="1"
+                        className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+                        placeholder="100"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        💡 Pourcentage de la taxe foncière à refacturer (0-100%)
+                      </p>
+                    </div>
+
+                    {/* Montant calculé */}
+                    {formData.montantRefactureTF && (
+                      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-blue-200 font-medium">Montant refacturé :</span>
+                          <span className="text-blue-400 text-xl font-bold">
+                            {parseFloat(formData.montantRefactureTF).toLocaleString('fr-FR')} € / an
+                          </span>
+                        </div>
+                        <p className="text-xs text-blue-300 mt-2">
+                          Soit {(parseFloat(formData.montantRefactureTF) / 12).toFixed(2)} € / mois
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -433,14 +553,10 @@ function BailForm({ onClose, onSubmit, bailToEdit = null, biensList = [], locata
         <LocataireForm
           onClose={() => setShowLocataireForm(false)}
           onSubmit={async (locataireData) => {
-            // Créer le locataire et récupérer son ID
-            const response = await fetch('http://localhost:3000/api/locataires', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(locataireData)
-            });
-            const newLocataire = await response.json();
-            await handleLocataireCreated(newLocataire.id);
+            // Créer le locataire en utilisant le service API (avec token)
+            const { locatairesAPI } = await import('../services/api');
+            const response = await locatairesAPI.create(locataireData);
+            await handleLocataireCreated(response.data.id);
           }}
         />
       )}

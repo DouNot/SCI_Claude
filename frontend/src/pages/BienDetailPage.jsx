@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { biensAPI, bauxAPI, facturesAPI, travauxAPI, documentsAPI, pretsAPI, evenementsFiscauxAPI, locatairesAPI } from '../services/api';
-import { ArrowLeft, Edit, MapPin, Home, Calendar, Euro, FileText, Wrench, Users, TrendingUp, Plus, Trash2, Pencil, Eye, X, Download, Mail, Building2, Warehouse, Car, TreePine } from 'lucide-react';
+import { ArrowLeft, Edit, MapPin, Home, Calendar, Euro, FileText, Wrench, Users, TrendingUp, Plus, Trash2, Pencil, Eye, X, Download, Mail, Building2, Warehouse, Car, TreePine, Target } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import PretForm from '../components/PretForm';
 import TravauxForm from '../components/TravauxForm';
@@ -435,6 +435,163 @@ function BienDetailPage() {
           </div>
         </div>
 
+        {/* Section Performance */}
+        <div className="mb-16">
+          <h2 className="text-3xl font-bold mb-6 bg-gradient-to-r from-white to-light-200 bg-clip-text text-transparent">
+            Performance du bien
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* TRI */}
+            <div className="bg-gradient-to-br from-accent-purple/20 to-accent-purple/5 rounded-2xl border border-accent-purple/30 shadow-card p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-accent-purple/20 rounded-xl border border-accent-purple/30">
+                  <Target className="h-6 w-6 text-accent-purple" />
+                </div>
+                <div>
+                  <p className="text-sm text-light-400 font-medium">TRI (Taux de Rentabilité Interne)</p>
+                </div>
+              </div>
+              <p className="text-5xl font-bold text-accent-purple mb-2">
+                {(() => {
+                  // Calcul du TRI
+                  const prixAchatTotal = bien.prixAchat + (bien.fraisNotaire || 0);
+                  const pretsDuBien = prets.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
+                  const apportInitial = prixAchatTotal - pretsDuBien;
+                  const valeurActuelle = bien.valeurActuelle || bien.prixAchat;
+                  
+                  // Calculer le nombre d'années depuis l'achat
+                  const anneesEcoulees = Math.max(1, (new Date() - new Date(bien.dateAchat)) / (1000 * 60 * 60 * 24 * 365));
+                  
+                  // Gain patrimonial = valeur actuelle - capital restant dû - apport
+                  const capitalRestant = prets.reduce((sum, p) => {
+                    const moisEcoules = Math.floor((new Date() - new Date(p.dateDebut)) / (1000 * 60 * 60 * 24 * 30));
+                    const moisRestants = Math.max(0, p.duree - moisEcoules);
+                    const montant = parseFloat(p.montant || 0);
+                    const tauxMensuel = (parseFloat(p.taux || 0) / 100) / 12;
+                    if (tauxMensuel === 0) return sum + (montant * moisRestants / p.duree);
+                    const mensualite = montant * (tauxMensuel * Math.pow(1 + tauxMensuel, p.duree)) / (Math.pow(1 + tauxMensuel, p.duree) - 1);
+                    return sum + (mensualite * moisRestants);
+                  }, 0);
+                  
+                  const gainPatrimonial = valeurActuelle - capitalRestant - apportInitial;
+                  const tri = apportInitial > 0 ? (gainPatrimonial / apportInitial / anneesEcoulees * 100) : 0;
+                  
+                  return tri.toFixed(2);
+                })()}
+                %
+              </p>
+              <p className="text-sm text-light-500">Performance annualisée</p>
+            </div>
+
+            {/* Taux de rentabilité */}
+            <div className="bg-gradient-to-br from-accent-green/20 to-accent-green/5 rounded-2xl border border-accent-green/30 shadow-card p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-accent-green/20 rounded-xl border border-accent-green/30">
+                  <TrendingUp className="h-6 w-6 text-accent-green" />
+                </div>
+                <div>
+                  <p className="text-sm text-light-400 font-medium">Taux de rentabilité</p>
+                </div>
+              </div>
+              <p className="text-5xl font-bold text-accent-green mb-2">
+                {(() => {
+                  // Calcul du taux de rentabilité
+                  const loyersAnnuels = (bailActif?.loyerHC || 0) * 12;
+                  const chargesAnnuelles = prets.reduce((sum, p) => sum + (parseFloat(p.mensualite) || 0), 0) * 12;
+                  const cashflow = loyersAnnuels - chargesAnnuelles;
+                  const tauxRentabilite = bien.prixAchat > 0 ? (cashflow / bien.prixAchat * 100) : 0;
+                  return tauxRentabilite.toFixed(2);
+                })()}
+                %
+              </p>
+              <p className="text-sm text-light-500">Cash-flow / Prix d'achat</p>
+            </div>
+
+            {/* Vacance observée */}
+            <div className="bg-gradient-to-br from-accent-blue/20 to-accent-blue/5 rounded-2xl border border-accent-blue/30 shadow-card p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-accent-blue/20 rounded-xl border border-accent-blue/30">
+                  <Calendar className="h-6 w-6 text-accent-blue" />
+                </div>
+                <div>
+                  <p className="text-sm text-light-400 font-medium">Vacance observée</p>
+                </div>
+              </div>
+              <p className="text-5xl font-bold text-accent-blue mb-2">
+                {(() => {
+                  // Calcul de la vacance observée
+                  if (baux.length === 0) return '0.00';
+                  
+                  // Date du premier bail
+                  const premierBail = baux.reduce((min, b) => {
+                    const dateDebut = new Date(b.dateDebut);
+                    return dateDebut < min ? dateDebut : min;
+                  }, new Date(baux[0].dateDebut));
+                  
+                  const maintenant = new Date();
+                  const dureeDepuisPremierBail = (maintenant - premierBail) / (1000 * 60 * 60 * 24); // en jours
+                  
+                  // Calculer le nombre de jours loués
+                  let joursLoues = 0;
+                  baux.forEach(bail => {
+                    const debut = new Date(bail.dateDebut);
+                    const fin = bail.dateFin ? new Date(bail.dateFin) : maintenant;
+                    const duree = (fin - debut) / (1000 * 60 * 60 * 24);
+                    joursLoues += Math.max(0, duree);
+                  });
+                  
+                  // Taux d'occupation = jours loués / durée totale * 100
+                  const tauxOccupation = dureeDepuisPremierBail > 0 ? (joursLoues / dureeDepuisPremierBail * 100) : 0;
+                  
+                  // Vacance = 100 - taux d'occupation
+                  const vacance = 100 - Math.min(100, tauxOccupation);
+                  
+                  return vacance.toFixed(2);
+                })()}
+                %
+              </p>
+              <p className="text-sm text-light-500">Depuis le premier bail</p>
+            </div>
+          </div>
+
+          {/* Détail des calculs */}
+          <div className="mt-6 bg-dark-900 rounded-2xl border border-dark-600/30 shadow-card p-6">
+            <h3 className="text-lg font-semibold mb-4 text-white">Détail des calculs</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+              <div className="space-y-2">
+                <p className="text-light-500 font-medium">TRI :</p>
+                <p className="text-light-400">
+                  = (Gain patrimonial) / (Apport initial) / Années
+                </p>
+                <p className="text-light-400">
+                  = (Valeur - Dette - Apport) / Apport / Durée
+                </p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-light-500 font-medium">Rentabilité :</p>
+                <p className="text-light-400">
+                  = (Cash-flow annuel) / (Prix d'achat) × 100
+                </p>
+                <p className="text-light-400">
+                  = (Loyers - Mensualités) / Prix × 100
+                </p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-light-500 font-medium">Vacance :</p>
+                <p className="text-light-400">
+                  = 100 - (Jours loués / Jours totaux) × 100
+                </p>
+                <p className="text-light-400">
+                  Depuis : {baux.length > 0 ? new Date(baux.reduce((min, b) => {
+                    const d = new Date(b.dateDebut);
+                    return d < min ? d : min;
+                  }, new Date(baux[0].dateDebut))).toLocaleDateString('fr-FR') : 'N/A'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Section Prêts */}
         <div ref={pretsRef} className="mb-16 scroll-mt-32">
           <div className="flex items-center justify-between mb-6">
@@ -565,9 +722,13 @@ function BienDetailPage() {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setShowLocataireForm(true)}
+                      onClick={() => {
+                        // Ouvrir le formulaire de modification du bail (loyer/charges)
+                        // TODO: Créer un vrai formulaire de modification bail
+                        setShowBailForm(true);
+                      }}
                       className="p-2 bg-accent-blue/10 hover:bg-accent-blue/20 rounded-xl border border-accent-blue/20 transition"
-                      title="Modifier le locataire"
+                      title="Modifier le bail (loyer/charges)"
                     >
                       <Pencil className="h-4 w-4 text-accent-blue" />
                     </button>

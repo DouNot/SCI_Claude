@@ -26,8 +26,8 @@ api.interceptors.request.use(
     
     // 3. Ajouter spaceId seulement si disponible
     if (currentSpaceId) {
-      // Ajouter spaceId dans les query params pour les GET
-      if (config.method === 'get') {
+      // Ajouter spaceId dans les query params pour les GET et DELETE
+      if (config.method === 'get' || config.method === 'delete') {
         config.params = {
           ...config.params,
           spaceId: currentSpaceId,
@@ -336,6 +336,28 @@ export const associesAPI = {
     const response = await api.delete(`/associes/${id}`);
     return response.data;
   },
+  
+  // Mouvements CCA
+  getMouvementsCCA: async (associeId) => {
+    const response = await api.get(`/associes/${associeId}/mouvements-cca`);
+    return response.data;
+  },
+  createMouvementCCA: async (associeId, mouvementData) => {
+    const response = await api.post(`/associes/${associeId}/mouvements-cca`, mouvementData);
+    return response.data;
+  },
+  updateMouvementCCA: async (mouvementId, mouvementData) => {
+    const response = await api.put(`/mouvements-cca/${mouvementId}`, mouvementData);
+    return response.data;
+  },
+  deleteMouvementCCA: async (mouvementId) => {
+    const response = await api.delete(`/mouvements-cca/${mouvementId}`);
+    return response.data;
+  },
+  getSoldeCCA: async (associeId) => {
+    const response = await api.get(`/associes/${associeId}/mouvements-cca/solde`);
+    return response.data;
+  },
 };
 
 export const documentsAPI = {
@@ -501,6 +523,40 @@ export const chargesAPI = {
   },
   deletePaiement: async (paiementId) => {
     const response = await api.delete(`/charges/paiements/${paiementId}`);
+    return response.data;
+  },
+};
+
+export const membersAPI = {
+  getAll: async (spaceId) => {
+    const response = await api.get(`/spaces/${spaceId}/members`);
+    return response.data;
+  },
+  invite: async (spaceId, inviteData) => {
+    const response = await api.post(`/spaces/${spaceId}/members/invite`, inviteData);
+    return response.data;
+  },
+  updateRole: async (spaceId, memberId, role) => {
+    const response = await api.patch(`/spaces/${spaceId}/members/${memberId}`, { role });
+    return response.data;
+  },
+  remove: async (spaceId, memberId) => {
+    const response = await api.delete(`/spaces/${spaceId}/members/${memberId}`);
+    return response.data;
+  },
+};
+
+export const invitationsAPI = {
+  getPending: async () => {
+    const response = await api.get('/invitations/pending');
+    return response.data;
+  },
+  accept: async (token) => {
+    const response = await api.post(`/invitations/${token}/accept`);
+    return response.data;
+  },
+  reject: async (token) => {
+    const response = await api.post(`/invitations/${token}/reject`);
     return response.data;
   },
 };
