@@ -1,5 +1,5 @@
 /**
- * Templates réutilisables pour les composants PDF - Version classique
+ * Templates réutilisables pour les composants PDF - Version corrigée
  * Sans emojis ni caractères spéciaux
  */
 
@@ -7,10 +7,10 @@ const config = require('./pdfConfig');
 const { formatDate } = require('./pdfHelpers');
 
 /**
- * Dessine un en-tête simple et classique avec statut de paiement
+ * Dessine un en-tête simple et classique avec nom de la SCI dynamique
  */
-exports.drawHeader = (doc, title, subtitle = null, statutPaiement = null) => {
-  const { colors, fonts, fontSizes, company } = config;
+exports.drawHeader = (doc, sciName, subtitle = null, statutPaiement = null) => {
+  const { colors, fonts, fontSizes } = config;
   
   // Rectangle de fond sobre
   doc.rect(0, 0, 595, 90).fill(colors.secondaryLight);
@@ -18,11 +18,17 @@ exports.drawHeader = (doc, title, subtitle = null, statutPaiement = null) => {
   // Ligne de couleur en haut
   doc.rect(0, 0, 595, 4).fill(colors.primary);
   
-  // Titre principal
+  // Nom de la SCI en haut à droite (CORRIGÉ)
+  doc.fontSize(fontSizes.small)
+     .font(fonts.bold)
+     .fillColor(colors.text)
+     .text(sciName, 380, 20, { width: 165, align: 'right' });
+  
+  // Titre principal à gauche
   doc.fontSize(fontSizes.xxlarge)
      .font(fonts.bold)
      .fillColor(colors.text)
-     .text(title, 50, 30);
+     .text(subtitle || 'RAPPORT', 50, 30);
   
   // Statut de paiement sous le titre (GRAND et COLORÉ)
   if (statutPaiement) {
@@ -32,28 +38,6 @@ exports.drawHeader = (doc, title, subtitle = null, statutPaiement = null) => {
        .font(fonts.bold)
        .fillColor(color)
        .text(statutPaiement, 50, 60);
-  } else if (subtitle) {
-    // Sous-titre si présent et pas de statut
-    doc.fontSize(fontSizes.medium)
-       .font(fonts.regular)
-       .fillColor(colors.textLight)
-       .text(subtitle, 50, 60);
-  }
-  
-  // Informations de la SCI à droite
-  const rightX = 380;
-  doc.fontSize(fontSizes.small)
-     .font(fonts.regular)
-     .fillColor(colors.text)
-     .text(company.name, rightX, 30, { width: 165, align: 'right' });
-  
-  if (company.phone) {
-    doc.fillColor(colors.textLight)
-       .text(company.phone, rightX, 45, { width: 165, align: 'right' });
-  }
-  
-  if (company.email) {
-    doc.text(company.email, rightX, 60, { width: 165, align: 'right' });
   }
   
   // Réinitialiser la position Y après l'en-tête
@@ -61,10 +45,10 @@ exports.drawHeader = (doc, title, subtitle = null, statutPaiement = null) => {
 };
 
 /**
- * Dessine un pied de page simple
+ * Dessine un pied de page simple avec nom de la SCI dynamique
  */
-exports.drawFooter = (doc, pageNumber = 1, totalPages = 1) => {
-  const { colors, fonts, fontSizes, company } = config;
+exports.drawFooter = (doc, sciName, pageNumber = 1, totalPages = 1) => {
+  const { colors, fonts, fontSizes } = config;
   
   // Ligne de séparation (remontée)
   doc.moveTo(50, 740)
@@ -72,23 +56,21 @@ exports.drawFooter = (doc, pageNumber = 1, totalPages = 1) => {
      .strokeColor(colors.border)
      .stroke();
   
-  // Informations de la SCI
+  // Nom de la SCI en bas (CORRIGÉ)
   doc.fontSize(fontSizes.tiny)
      .font(fonts.regular)
      .fillColor(colors.textMuted)
      .text(
-       `${company.name} - ${company.address}, ${company.postalCode} ${company.city}`,
+       sciName,
        50,
        750,
        { width: 445, align: 'left' }
      );
   
-  // SIRET si disponible
-  if (company.siret) {
-    doc.text(`SIRET: ${company.siret}`, 50, 763, { width: 445, align: 'left' });
-  }
+  // Date de génération
+  doc.text(`Genere le ${formatDate(new Date(), 'short')}`, 50, 763, { width: 445, align: 'left' });
   
-  // Numéro de page
+  // CORRECTION: Numéro de page avec nombre total correct
   doc.fontSize(fontSizes.small)
      .text(`Page ${pageNumber}/${totalPages}`, 50, 750, { width: 495, align: 'right' });
 };
@@ -228,7 +210,7 @@ exports.drawHighlight = (doc, options) => {
     x = 50,
     y = doc.y,
     width = 495,
-    height = 45,  // Paramètre height configurable
+    height = 45,
     label,
     value,
     color = config.colors.text,
@@ -251,7 +233,7 @@ exports.drawHighlight = (doc, options) => {
   
   // Valeur
   doc.fontSize(fontSizes.large)
-     .font(fonts.bold)
+     .font(config.fonts.bold)
      .fillColor(color)
      .text(value, x + 12, y + 22, { width: width - 24 });
   

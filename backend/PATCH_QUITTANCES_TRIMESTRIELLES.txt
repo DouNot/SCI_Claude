@@ -1,0 +1,45 @@
+// À ajouter APRÈS la génération du PDF trimestriel (ligne ~140)
+
+// CORRECTION: Sauvegarder les 3 quittances trimestrielles en base
+if (typePeriode === 'TRIMESTRIELLE') {
+  const mois1 = parseInt(mois);
+  const mois2 = mois1 + 1 > 12 ? 1 : mois1 + 1;
+  const mois3 = mois1 + 2 > 12 ? (mois1 + 2) - 12 : mois1 + 2;
+  
+  // Sauvegarder les 3 mois
+  for (const m of [mois1, mois2, mois3]) {
+    const quittanceExistante = await prisma.quittance.findFirst({
+      where: {
+        bailId,
+        mois: m,
+        annee: parseInt(annee),
+      },
+    });
+    
+    if (!quittanceExistante) {
+      const numeroQuittance = helpers.generateQuittanceNumber(bailId, m, annee);
+      await prisma.quittance.create({
+        data: {
+          bailId,
+          mois: m,
+          annee: parseInt(annee),
+          numeroQuittance,
+          montantLoyer,
+          montantCharges,
+          montantTotal: montantLoyer + montantCharges,
+          datePaiement: datePaiement ? new Date(datePaiement) : null,
+          estPaye: !!datePaiement,
+        },
+      });
+    } else if (datePaiement && !quittanceExistante.estPaye) {
+      // Marquer comme payé si pas déjà payé
+      await prisma.quittance.update({
+        where: { id: quittanceExistante.id },
+        data: {
+          datePaiement: new Date(datePaiement),
+          estPaye: true,
+        },
+      });
+    }
+  }
+}

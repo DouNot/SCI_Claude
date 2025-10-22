@@ -257,31 +257,40 @@ exports.createCharge = asyncHandler(async (req, res) => {
     }
   }
 
-  const charge = await prisma.charge.create({
-    data: dataToCreate,
-    include: {
-      bien: true,
-      paiements: true,
-    },
-  });
-
-  // Synchroniser avec le bien si c'est une assurance PNO ou une taxe foncière
-  if (charge.bienId && charge.type === 'ASSURANCE_PNO' && charge.estActive) {
-    await prisma.bien.update({
-      where: { id: charge.bienId },
-      data: { assuranceMensuelle: charge.montant },
+  try {
+    const charge = await prisma.charge.create({
+      data: dataToCreate,
+      include: {
+        bien: true,
+        paiements: true,
+      },
     });
-  } else if (charge.bienId && charge.type === 'TAXE_FONCIERE' && charge.estActive) {
-    await prisma.bien.update({
-      where: { id: charge.bienId },
-      data: { taxeFonciere: charge.montant },
+
+    // Synchroniser avec le bien si c'est une assurance PNO ou une taxe foncière
+    if (charge.bienId && charge.type === 'ASSURANCE_PNO' && charge.estActive) {
+      await prisma.bien.update({
+        where: { id: charge.bienId },
+        data: { assuranceMensuelle: charge.montant },
+      });
+    } else if (charge.bienId && charge.type === 'TAXE_FONCIERE' && charge.estActive) {
+      await prisma.bien.update({
+        where: { id: charge.bienId },
+        data: { taxeFonciere: charge.montant },
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      data: charge,
+    });
+  } catch (error) {
+    console.error('Erreur lors de la création de la charge:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la création de la charge',
+      details: error.message
     });
   }
-
-  res.status(201).json({
-    success: true,
-    data: charge,
-  });
 });
 
 // @desc    Mettre à jour une charge

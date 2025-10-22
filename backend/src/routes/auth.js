@@ -26,8 +26,12 @@ router.post('/signup', async (req, res) => {
   try {
     const { email, password, nom, prenom } = req.body;
     
+    console.log('📝 Tentative de création de compte:', { email, nom, prenom });
+    console.log('🔍 Type de email:', typeof email, 'Valeur:', JSON.stringify(email));
+    
     // Validation des champs
     if (!email || !password) {
+      console.log('❌ Validation échouée: email ou password manquant');
       return res.status(400).json({ 
         error: 'Email et mot de passe requis',
         code: 'VALIDATION_ERROR'
@@ -35,18 +39,24 @@ router.post('/signup', async (req, res) => {
     }
     
     if (password.length < 8) {
+      console.log('❌ Validation échouée: mot de passe trop court');
       return res.status(400).json({ 
         error: 'Le mot de passe doit contenir au moins 8 caractères',
         code: 'PASSWORD_TOO_SHORT'
       });
     }
     
+    // Nettoyer l'email (enlever les guillemets si présents)
+    const cleanEmail = email.replace(/"/g, '').toLowerCase().trim();
+    console.log('✅ Email nettoyé:', cleanEmail);
+    
     // Vérifier si l'email existe déjà
     const existingUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() }
+      where: { email: cleanEmail }
     });
     
     if (existingUser) {
+      console.log('❌ Email déjà utilisé:', cleanEmail);
       return res.status(400).json({ 
         error: 'Cet email est déjà utilisé',
         code: 'EMAIL_ALREADY_EXISTS'
@@ -61,13 +71,15 @@ router.post('/signup', async (req, res) => {
       // 1. Créer l'utilisateur
       const user = await tx.user.create({
         data: {
-          email: email.toLowerCase(),
+          email: cleanEmail,
           passwordHash,
           nom: nom || '',
           prenom: prenom || '',
           emailVerified: false
         }
       });
+      
+      console.log('✅ Utilisateur créé:', user.id);
       
       // 2. Créer l'espace personnel
       const personalSpace = await tx.space.create({
@@ -78,6 +90,8 @@ router.post('/signup', async (req, res) => {
           statut: 'ACTIVE'
         }
       });
+      
+      console.log('✅ Espace personnel créé:', personalSpace.id);
       
       // 3. Ajouter l'utilisateur comme OWNER de son espace personnel
       await tx.spaceMember.create({
@@ -109,6 +123,8 @@ router.post('/signup', async (req, res) => {
     // Générer le token JWT
     const token = generateToken(result.user.id);
     
+    console.log('✅ Compte créé avec succès:', result.user.email);
+    
     res.status(201).json({
       message: 'Compte créé avec succès',
       token,
@@ -116,10 +132,12 @@ router.post('/signup', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Erreur signup:', error);
+    console.error('❌ Erreur signup:', error);
+    console.error('Stack:', error.stack);
     res.status(500).json({ 
       error: 'Erreur lors de la création du compte',
-      code: 'SERVER_ERROR'
+      code: 'SERVER_ERROR',
+      details: error.message
     });
   }
 });

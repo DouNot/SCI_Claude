@@ -264,6 +264,18 @@ exports.createBail = asyncHandler(async (req, res) => {
   } else if (dataToCreate.montantTaxeFonciere) {
     dataToCreate.montantTaxeFonciere = parseFloat(dataToCreate.montantTaxeFonciere);
   }
+  
+  if (dataToCreate.partRefactureTF === '' || dataToCreate.partRefactureTF === null) {
+    dataToCreate.partRefactureTF = null;
+  } else if (dataToCreate.partRefactureTF) {
+    dataToCreate.partRefactureTF = parseFloat(dataToCreate.partRefactureTF);
+  }
+  
+  if (dataToCreate.montantRefactureTF === '' || dataToCreate.montantRefactureTF === null) {
+    dataToCreate.montantRefactureTF = null;
+  } else if (dataToCreate.montantRefactureTF) {
+    dataToCreate.montantRefactureTF = parseFloat(dataToCreate.montantRefactureTF);
+  }
 
   // Champs texte optionnels
   if (dataToCreate.indexRevision === '') dataToCreate.indexRevision = null;
@@ -359,6 +371,18 @@ exports.updateBail = asyncHandler(async (req, res) => {
     dataToUpdate.montantTaxeFonciere = null;
   } else if (dataToUpdate.montantTaxeFonciere) {
     dataToUpdate.montantTaxeFonciere = parseFloat(dataToUpdate.montantTaxeFonciere);
+  }
+  
+  if (dataToUpdate.partRefactureTF === '' || dataToUpdate.partRefactureTF === null) {
+    dataToUpdate.partRefactureTF = null;
+  } else if (dataToUpdate.partRefactureTF) {
+    dataToUpdate.partRefactureTF = parseFloat(dataToUpdate.partRefactureTF);
+  }
+  
+  if (dataToUpdate.montantRefactureTF === '' || dataToUpdate.montantRefactureTF === null) {
+    dataToUpdate.montantRefactureTF = null;
+  } else if (dataToUpdate.montantRefactureTF) {
+    dataToUpdate.montantRefactureTF = parseFloat(dataToUpdate.montantRefactureTF);
   }
 
   if (dataToUpdate.indexRevision === '') dataToUpdate.indexRevision = null;

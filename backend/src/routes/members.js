@@ -3,6 +3,7 @@ const { PrismaClient } = require('@prisma/client');
 const crypto = require('crypto');
 const { requireAuth } = require('../middleware/auth');
 const { requireSpaceAccess, requireSpaceRole } = require('../middleware/spaceAccess');
+const { sendInvitationEmail } = require('../services/emailService');
 
 const router = express.Router({ mergeParams: true });
 const prisma = new PrismaClient();
@@ -155,8 +156,27 @@ router.post('/invite', requireAuth, requireSpaceAccess, requireSpaceRole(['OWNER
       }
     });
     
-    // TODO: Envoyer l'email d'invitation
+    // Envoyer l'email d'invitation
     const invitationLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/invite/${invitationToken}`;
+    
+    // Récupérer le nom du space et de l'inviteur
+    const space = await prisma.space.findUnique({ where: { id: spaceId } });
+    const inviter = await prisma.user.findUnique({ where: { id: req.user.id } });
+    
+    try {
+      await sendInvitationEmail({
+        to: invitedUser.email,
+        inviterName: `${inviter.prenom || ''} ${inviter.nom || inviter.email}`.trim(),
+        spaceName: space.nom,
+        spaceType: space.type,
+        role,
+        invitationLink
+      });
+      console.log(`✅ Email d'invitation envoyé à ${invitedUser.email}`);
+    } catch (emailError) {
+      console.error('❌ Erreur envoi email:', emailError);
+      // On continue quand même, l'invitation est créée
+    }
     
     res.status(201).json({
       message: 'Invitation créée avec succès',

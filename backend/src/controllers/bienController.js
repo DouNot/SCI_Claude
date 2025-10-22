@@ -337,31 +337,66 @@ exports.deleteBien = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const spaceId = req.spaceId;
 
-  // Vérifier que le bien existe et appartient au space
-  const bien = await prisma.bien.findFirst({
-    where: { 
-      id: id,
-      spaceId: spaceId
-    },
-  });
+  console.log(`🗑️ Tentative de suppression du bien ${id} pour le space ${spaceId}`);
 
-  if (!bien) {
-    return res.status(404).json({
+  try {
+    // Vérifier que le bien existe et appartient au space
+    const bien = await prisma.bien.findFirst({
+      where: { 
+        id: id,
+        spaceId: spaceId
+      },
+      include: {
+        baux: {
+          where: { statut: 'ACTIF' }
+        }
+      }
+    });
+
+    if (!bien) {
+      console.log(`❌ Bien ${id} non trouvé`);
+      return res.status(404).json({
+        success: false,
+        error: 'Bien non trouvé',
+      });
+    }
+
+    // Vérifier qu'il n'y a pas de bail actif
+    if (bien.baux && bien.baux.length > 0) {
+      console.log(`❌ Bien ${id} a un bail actif`);
+      return res.status(400).json({
+        success: false,
+        error: 'Impossible de supprimer un bien avec un bail actif. Veuillez d\'abord résilier le bail.',
+        code: 'BIEN_HAS_ACTIVE_BAIL'
+      });
+    }
+
+    console.log(`✅ Bien ${id} validé, début de la suppression`);
+
+    // Supprimer le bien - Prisma gère automatiquement la cascade avec onDelete: Cascade
+    await prisma.bien.delete({
+      where: { id }
+    });
+
+    console.log(`✅ Bien ${id} supprimé avec succès`);
+
+    res.status(200).json({
+      success: true,
+      data: {},
+      message: 'Bien supprimé avec succès',
+    });
+
+  } catch (error) {
+    console.error(`❌ Erreur lors de la suppression du bien ${id}:`, error);
+    console.error('Stack:', error.stack);
+    
+    return res.status(500).json({
       success: false,
-      error: 'Bien non trouvé',
+      error: 'Erreur lors de la suppression du bien',
+      details: error.message,
+      code: error.code || 'UNKNOWN_ERROR'
     });
   }
-
-  // Supprimer le bien
-  await prisma.bien.delete({
-    where: { id },
-  });
-
-  res.status(200).json({
-    success: true,
-    data: {},
-    message: 'Bien supprimé avec succès',
-  });
 });
 
 module.exports = exports;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { biensAPI, bauxAPI, evenementsFiscauxAPI, pretsAPI, chargesAPI } from '../services/api';
-import { TrendingUp, Home, AlertCircle, Euro, ArrowUpRight, ChevronDown, Download } from 'lucide-react';
+import { TrendingUp, Home, AlertCircle, Euro, ArrowUpRight, ChevronDown, Download, Wallet } from 'lucide-react';
 import { Line, Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
 
@@ -144,6 +144,9 @@ function DashboardPage({ onNavigate }) {
   const cashFlowAnnuel = loyersAnnuels - chargesAnnuelles;
   const prixAchatTotal = biensFiltres.reduce((sum, b) => sum + b.prixAchat, 0);
   const tauxRentabiliteNet = prixAchatTotal > 0 ? ((cashFlowAnnuel / prixAchatTotal) * 100).toFixed(2) : 0;
+
+  // Solde compte courant (pour l'instant 0, à connecter avec l'API bancaire plus tard)
+  const soldeCompteCourant = 0;
 
   // Génération données graphique (dépend de timeRange et viewType)
   const generateChartData = () => {
@@ -698,7 +701,7 @@ function DashboardPage({ onNavigate }) {
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
           <div className="bg-dark-900 rounded-2xl p-6 border border-dark-600/30 shadow-card hover:shadow-card-hover hover:scale-[1.02] transition-all cursor-pointer">
             <div className="flex items-center gap-4 mb-4">
               <div className="p-3 bg-accent-blue/10 rounded-xl border border-accent-blue/20">
@@ -738,6 +741,18 @@ function DashboardPage({ onNavigate }) {
               <p className="text-sm text-light-400 font-medium">Dette totale</p>
             </div>
             <p className="text-4xl font-bold text-accent-orange">{capitalRestantDu.toLocaleString('fr-FR')} €</p>
+          </div>
+
+          {/* NOUVEAU : Compte Courant */}
+          <div className="bg-dark-900 rounded-2xl p-6 border border-dark-600/30 shadow-card hover:shadow-card-hover hover:scale-[1.02] transition-all cursor-pointer">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-3 bg-accent-blue/10 rounded-xl border border-accent-blue/20">
+                <Wallet className="h-6 w-6 text-accent-blue" />
+              </div>
+              <p className="text-sm text-light-400 font-medium">Compte courant</p>
+            </div>
+            <p className="text-4xl font-bold">{soldeCompteCourant.toLocaleString('fr-FR')} €</p>
+            <p className="text-xs text-light-500 mt-2 font-medium">Non connecté</p>
           </div>
         </div>
 
