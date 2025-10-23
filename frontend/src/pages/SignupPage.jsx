@@ -49,12 +49,13 @@ const SignupPage = () => {
       return;
     }
 
-    const result = await signup(
-      formData.email,
-      formData.password,
-      formData.nom,
-      formData.prenom
-    );
+    // ✅ FIX : Passer UN SEUL OBJET avec toutes les données
+    const result = await signup({
+      email: formData.email,
+      password: formData.password,
+      nom: formData.nom,
+      prenom: formData.prenom,
+    });
 
     if (result.success) {
       navigate('/dashboard', { replace: true });

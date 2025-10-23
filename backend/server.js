@@ -5,8 +5,36 @@ require('dotenv').config();
 
 const app = express();
 
+// ============================================
+// CONFIGURATION CORS POUR PRODUCTION
+// ============================================
+const corsOptions = {
+  origin: function (origin, callback) {
+    // En développement, accepter toutes les origines
+    if (process.env.NODE_ENV === 'development') {
+      callback(null, true);
+      return;
+    }
+
+    // En production, vérifier que l'origine est autorisée
+    const allowedOrigins = [
+      process.env.FRONTEND_URL, // URL du frontend configurée
+      'http://localhost:5173',   // Pour les tests locaux
+      'http://localhost:3000',   // Pour les tests locaux
+    ].filter(Boolean); // Enlever les valeurs undefined
+
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️ Origine bloquée par CORS: ${origin}`);
+      callback(new Error('Non autorisé par CORS'));
+    }
+  },
+  credentials: true,
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -36,7 +64,6 @@ const projectionsRoutes = require('./src/routes/projections');
 const rapportsRoutes = require('./src/routes/rapports');
 const businessPlansRoutes = require('./src/routes/businessPlans');
 const bankRoutes = require('./src/routes/bank');
-// TODO: Adapter les autres routes au format Space
 
 app.use('/api/spaces/:spaceId/biens', bienRoutesNew);
 app.use('/api/spaces/:spaceId/projections', projectionsRoutes);
@@ -91,8 +118,9 @@ app.use(errorHandler);
 // Route de test
 app.get('/', (req, res) => {
   res.json({ 
-    message: 'API SCI Claude - Backend opérationnel !',
+    message: 'API SCI Cloud - Backend opérationnel !',
     version: '2.0.0 - Space Model',
+    environment: process.env.NODE_ENV || 'development',
     endpoints: {
       auth: '/api/auth/*',
       spaces: '/api/spaces/*',
@@ -106,25 +134,33 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
 // Démarrer le serveur
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+
+app.listen(PORT, HOST, () => {
+  console.log(`\n🚀 Serveur démarré`);
+  console.log(`📍 URL: http://${HOST}:${PORT}`);
   console.log(`📊 Environnement: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`✨ Nouveau système Space activé`);
-  console.log(`\nRoutes disponibles:`);
+  console.log(`✨ Système Space activé`);
+  
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`🔒 CORS activé pour: ${process.env.FRONTEND_URL || 'Non configuré'}`);
+  } else {
+    console.log(`🔓 CORS en mode développement (toutes origines acceptées)`);
+  }
+  
+  console.log(`\n📍 Routes principales:`);
   console.log(`  - POST /api/auth/signup`);
   console.log(`  - POST /api/auth/login`);
-  console.log(`  - GET  /api/auth/me`);
   console.log(`  - GET  /api/spaces`);
-  console.log(`  - POST /api/spaces`);
-  console.log(`  - GET  /api/spaces/:spaceId`);
-  console.log(`  - GET  /api/spaces/:spaceId/biens`);
-  console.log(`  - POST /api/spaces/:spaceId/biens`);
+  console.log(`  - GET  /health`);
+  console.log();
 });
 
 module.exports = app;
